@@ -47,3 +47,7 @@ publicar `dist`.
 - Access Token Mercado Pago somente no backend.
 - A confirmação da compra deve vir do servidor/webhook.
 - A licença fica vinculada ao usuário e ao produto/versão.
+
+## Nota de implantação
+
+Este commit serve como ponto de sincronização para validar a implantação de produção a partir do repositório AssistenteInstrutorV6 conectado ao Vercel. Nenhum arquivo de aplicação ou backup foi removido.
