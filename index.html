@@ -10,6 +10,8 @@
   <script type="module">
     if (window.location.pathname === "/admin-access") {
       import("/src/admin.jsx");
+    } else if (window.location.pathname === "/admin-login") {
+      import("/src/admin-login.jsx");
     } else {
       import("/src/main.jsx");
       import("/src/PredictiveAIOverlay.jsx");
