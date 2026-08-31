@@ -10,6 +10,7 @@
   padding:7px 5px !important;
   text-align:center !important;
   line-height:1.1 !important;
+  color:#dceaf5 !important;
 }
 
 .app aside .nav svg,
@@ -20,14 +21,17 @@
   margin:0 !important;
 }
 
-.app aside .nav span,
-.dashboard-shell .main-sidebar .nav span {
+.app aside .nav > span,
+.dashboard-shell .main-sidebar .nav > span {
   display:block !important;
   visibility:visible !important;
   opacity:1 !important;
+  position:static !important;
   width:auto !important;
   height:auto !important;
+  max-width:none !important;
   overflow:visible !important;
+  clip:auto !important;
   white-space:nowrap !important;
   font-size:9px !important;
   line-height:1.1 !important;
@@ -35,23 +39,20 @@
   letter-spacing:.04em !important;
   text-transform:uppercase !important;
   color:inherit !important;
+  text-indent:0 !important;
 }
 
-.app aside .nav.active,
+.dashboard-shell .main-sidebar .nav::after {
+  content:none !important;
+  display:none !important;
+}
+
 .dashboard-shell .main-sidebar .nav.active {
   color:#fff !important;
 }
 
-.app aside .logout,
-.dashboard-shell .main-sidebar .logout {
+.dashboard-shell .main-sidebar .nav.logout {
   margin-top:auto !important;
-}
-
-.app aside .logout span,
-.dashboard-shell .main-sidebar .logout span {
-  display:block !important;
-  visibility:visible !important;
-  opacity:1 !important;
 }
 
 @media (max-width:900px) {
@@ -65,8 +66,8 @@
     min-height:64px !important;
     height:64px !important;
   }
-  .app aside .nav span,
-  .dashboard-shell .main-sidebar .nav span {
+  .app aside .nav > span,
+  .dashboard-shell .main-sidebar .nav > span {
     font-size:8px !important;
   }
 }
