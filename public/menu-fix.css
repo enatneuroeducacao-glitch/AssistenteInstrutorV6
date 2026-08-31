@@ -1,0 +1,72 @@
+.app aside .nav,
+.dashboard-shell .main-sidebar .nav {
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:5px !important;
+  min-height:68px !important;
+  height:68px !important;
+  padding:7px 5px !important;
+  text-align:center !important;
+  line-height:1.1 !important;
+}
+
+.app aside .nav svg,
+.dashboard-shell .main-sidebar .nav svg {
+  width:24px !important;
+  height:24px !important;
+  flex:0 0 auto !important;
+  margin:0 !important;
+}
+
+.app aside .nav span,
+.dashboard-shell .main-sidebar .nav span {
+  display:block !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  width:auto !important;
+  height:auto !important;
+  overflow:visible !important;
+  white-space:nowrap !important;
+  font-size:9px !important;
+  line-height:1.1 !important;
+  font-weight:800 !important;
+  letter-spacing:.04em !important;
+  text-transform:uppercase !important;
+  color:inherit !important;
+}
+
+.app aside .nav.active,
+.dashboard-shell .main-sidebar .nav.active {
+  color:#fff !important;
+}
+
+.app aside .logout,
+.dashboard-shell .main-sidebar .logout {
+  margin-top:auto !important;
+}
+
+.app aside .logout span,
+.dashboard-shell .main-sidebar .logout span {
+  display:block !important;
+  visibility:visible !important;
+  opacity:1 !important;
+}
+
+@media (max-width:900px) {
+  .app aside,
+  .dashboard-shell .main-sidebar {
+    width:92px !important;
+    flex-basis:92px !important;
+  }
+  .app aside .nav,
+  .dashboard-shell .main-sidebar .nav {
+    min-height:64px !important;
+    height:64px !important;
+  }
+  .app aside .nav span,
+  .dashboard-shell .main-sidebar .nav span {
+    font-size:8px !important;
+  }
+}
