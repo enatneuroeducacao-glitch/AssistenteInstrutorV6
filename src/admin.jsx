@@ -6,78 +6,20 @@ import "./style.css";
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = url && key ? createClient(url, key) : null;
-
-function AdminAccess() {
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
-  const [users, setUsers] = useState([]);
-  const [email, setEmail] = useState("");
-  const [expires, setExpires] = useState("");
-  const [note, setNote] = useState("");
-  const [search, setSearch] = useState("");
-  const [msg, setMsg] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function loadUsers(term = "") {
-    if (!supabase) return;
-    const { data, error } = await supabase.rpc("admin_list_access_users", { p_search: term || null });
-    if (error) { setMsg(error.message); return; }
-    setUsers(data || []);
-  }
-
-  useEffect(() => {
-    let mounted = true;
-    if (!supabase) { setMsg("Supabase não configurado."); setLoading(false); return; }
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return;
-      const current = data?.session || null;
-      setSession(current);
-      if (!current?.user) { setLoading(false); return; }
-      const { data: adminUsers, error } = await supabase.rpc("admin_list_access_users", { p_search: "" });
-      if (!mounted) return;
-      if (error) { setMsg(error.message); setLoading(false); return; }
-      const me = (adminUsers || []).find(x => String(x.email || "").toLowerCase() === String(current.user.email || "").toLowerCase());
-      if (!me) { setMsg("Acesso administrativo não autorizado."); setLoading(false); return; }
-      setAuthorized(true);
-      setUsers(adminUsers || []);
-      setLoading(false);
-    });
-    return () => { mounted = false; };
-  }, []);
-
-  async function grant() {
-    if (!email.trim()) return setMsg("Informe o e-mail da conta.");
-    setBusy(true); setMsg("");
-    const expiresAt = expires ? new Date(`${expires}T23:59:59`).toISOString() : null;
-    const { error } = await supabase.rpc("admin_grant_free_access", { p_email: email.trim(), p_expires_at: expiresAt, p_note: note.trim() || null });
-    if (error) setMsg(error.message);
-    else { setMsg("Acesso livre concedido com sucesso."); setEmail(""); setExpires(""); setNote(""); await loadUsers(search); }
-    setBusy(false);
-  }
-
-  async function revoke(userId) {
-    if (!window.confirm("Revogar o acesso livre deste usuário?")) return;
-    setBusy(true); setMsg("");
-    const { error } = await supabase.rpc("admin_revoke_free_access", { p_user_id: userId });
-    if (error) setMsg(error.message); else { setMsg("Acesso revogado."); await loadUsers(search); }
-    setBusy(false);
-  }
-
-  if (loading) return <div className="auth"><div className="card"><h1>ENAT — Administração</h1><p>Verificando acesso administrativo...</p></div></div>;
-  if (!session) return <div className="auth"><div className="card"><h1>ENAT — Administração</h1><p className="msg">Faça login no Assistente do Instrutor antes de acessar este painel.</p><a href="/">Voltar ao Assistente</a></div></div>;
-  if (!authorized) return <div className="auth"><div className="card"><h1>ENAT — Administração</h1><p className="msg">{msg || "Acesso administrativo não autorizado."}</p><a href="/">Voltar ao Assistente</a></div></div>;
-
-  return <div className="app">
-    <aside><div className="brand small"><span style={{color:"#55BFEF",fontWeight:900}}>ENAT</span> ADMIN</div><button className="nav active">ACESSO LIVRE</button><button className="nav" onClick={()=>window.location.href="/"}>ASSISTENTE</button></aside>
-    <main>
-      <header><div><b>Administração ENAT</b><small>Gestão de acesso profissional</small></div><span className="pill">ADMIN</span></header>
-      <section>
-        <div className="panel"><h1>Conceder acesso livre</h1><p>Libere ou limite o acesso profissional sem editar código ou assinatura manualmente.</p><div className="grid"><label>E-mail da conta<input value={email} onChange={e=>setEmail(e.target.value)} placeholder="usuario@email.com" /></label><label>Validade (opcional)<input type="date" value={expires} onChange={e=>setExpires(e.target.value)} /></label></div><label>Observação<input value={note} onChange={e=>setNote(e.target.value)} placeholder="Ex.: Instrutor beta ENAT" /></label><button disabled={busy} onClick={grant}>{busy ? "PROCESSANDO..." : "CONCEDER ACESSO"}</button>{msg && <p className="msg">{msg}</p>}</div>
-        <div className="panel"><div style={{display:"flex",gap:"10px",alignItems:"center",justifyContent:"space-between",flexWrap:"wrap"}}><div><h2>Contas e acessos</h2><small>Pesquisa por nome ou e-mail.</small></div><input value={search} onChange={e=>{setSearch(e.target.value);loadUsers(e.target.value)}} placeholder="Pesquisar..." style={{maxWidth:"300px"}} /></div><div style={{overflowX:"auto",marginTop:"14px"}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr><th style={{textAlign:"left",padding:"8px"}}>Nome</th><th style={{textAlign:"left",padding:"8px"}}>E-mail</th><th style={{padding:"8px"}}>Acesso</th><th style={{padding:"8px"}}>Validade</th><th style={{padding:"8px"}}></th></tr></thead><tbody>{users.map(u=><tr key={u.user_id} style={{borderTop:"1px solid #e5eaf0"}}><td style={{padding:"8px"}}>{u.full_name||"—"}</td><td style={{padding:"8px"}}>{u.email||"—"}</td><td style={{padding:"8px",textAlign:"center",fontWeight:800}}>{u.access_active?"LIVRE":"—"}</td><td style={{padding:"8px",textAlign:"center"}}>{u.expires_at?new Date(u.expires_at).toLocaleDateString("pt-BR"):(u.access_active?"PERMANENTE":"—")}</td><td style={{padding:"8px",textAlign:"right"}}>{u.access_active&&<button className="link" disabled={busy} onClick={()=>revoke(u.user_id)}>REVOGAR</button>}</td></tr>)}</tbody></table></div></div>
-      </section>
-    </main>
-  </div>;
+const card={background:"#fff",border:"1px solid #dfe7f2",borderRadius:14,padding:18,boxShadow:"0 8px 24px rgba(15,35,65,.05)"};
+const Stat=({label,value,note})=><div style={{...card,minHeight:118}}><div style={{fontSize:11,fontWeight:800,letterSpacing:".08em",opacity:.62}}>{label}</div><div style={{fontSize:32,fontWeight:900,color:"#17315d",marginTop:10}}>{value??"—"}</div>{note&&<div style={{fontSize:12,opacity:.68,marginTop:5}}>{note}</div>}</div>;
+const Section=({title,children})=><div style={{...card,marginTop:16}}><div style={{fontSize:12,fontWeight:900,letterSpacing:".07em",color:"#4772a8",textTransform:"uppercase"}}>{title}</div>{children}</div>;
+function AdminAccess(){
+ const [session,setSession]=useState(null),[loading,setLoading]=useState(true),[authorized,setAuthorized]=useState(false),[tab,setTab]=useState("dashboard"),[users,setUsers]=useState([]),[metrics,setMetrics]=useState(null),[email,setEmail]=useState(""),[expires,setExpires]=useState(""),[note,setNote]=useState(""),[search,setSearch]=useState(""),[msg,setMsg]=useState(""),[busy,setBusy]=useState(false);
+ async function loadUsers(term=""){if(!supabase)return;const{data,error}=await supabase.rpc("admin_list_access_users",{p_search:term||null});if(error)setMsg(error.message);else setUsers(data||[])}
+ async function loadMetrics(){if(!supabase)return;const{data,error}=await supabase.rpc("admin_get_professional_dashboard");if(error)setMsg(error.message);else setMetrics(data||null)}
+ useEffect(()=>{let mounted=true;if(!supabase){setMsg("Supabase não configurado.");setLoading(false);return}supabase.auth.getSession().then(async({data})=>{if(!mounted)return;const current=data?.session||null;setSession(current);if(!current?.user){setLoading(false);return}const{data:adminUsers,error}=await supabase.rpc("admin_list_access_users",{p_search:""});if(!mounted)return;if(error){setMsg(error.message);setLoading(false);return}const me=(adminUsers||[]).find(x=>String(x.email||"").toLowerCase()===String(current.user.email||"").toLowerCase());if(!me){setMsg("Acesso administrativo não autorizado.");setLoading(false);return}setAuthorized(true);setUsers(adminUsers||[]);await loadMetrics();setLoading(false)});return()=>{mounted=false}},[]);
+ async function grant(){if(!email.trim())return setMsg("Informe o e-mail da conta.");setBusy(true);setMsg("");const expiresAt=expires?new Date(`${expires}T23:59:59`).toISOString():null;const{error}=await supabase.rpc("admin_grant_free_access",{p_email:email.trim(),p_expires_at:expiresAt,p_note:note.trim()||null});if(error)setMsg(error.message);else{setMsg("Acesso livre concedido com sucesso.");setEmail("");setExpires("");setNote("");await loadUsers(search)}setBusy(false)}
+ async function revoke(userId){if(!window.confirm("Revogar o acesso livre deste usuário?"))return;setBusy(true);setMsg("");const{error}=await supabase.rpc("admin_revoke_free_access",{p_user_id:userId});if(error)setMsg(error.message);else{setMsg("Acesso revogado.");await loadUsers(search)}setBusy(false)}
+ if(loading)return <div className="auth"><div className="card"><h1>ENAT — Administração</h1><p>Verificando acesso administrativo...</p></div></div>;
+ if(!session)return <div className="auth"><div className="card"><h1>ENAT — Administração</h1><p className="msg">Faça login no Assistente do Instrutor antes de acessar este painel.</p><a href="/">Voltar ao Assistente</a></div></div>;
+ if(!authorized)return <div className="auth"><div className="card"><h1>ENAT — Administração</h1><p className="msg">{msg||"Acesso administrativo não autorizado."}</p><a href="/">Voltar ao Assistente</a></div></div>;
+ const prof=metrics?.professionals||{},students=metrics?.students||{},lessons=metrics?.lessons||{},hsi=metrics?.hsi||{},rpa=metrics?.rpa||{},certificates=metrics?.certificates||{};
+ return <div className="app"><aside><div className="brand small"><span style={{color:"#55BFEF",fontWeight:900}}>ENAT</span> ADMIN</div><button className={`nav ${tab==="dashboard"?"active":""}`} onClick={()=>setTab("dashboard")}>PAINEL</button><button className={`nav ${tab==="access"?"active":""}`} onClick={()=>setTab("access")}>ACESSO LIVRE</button><button className="nav" onClick={()=>window.location.href="/"}>ASSISTENTE</button></aside><main><header><div><b>Administração ENAT</b><small>Indicadores agregados da plataforma — sem exposição de dados individuais sensíveis</small></div><span className="pill">ADMIN</span></header><section style={{maxWidth:1250,margin:"0 auto",padding:"22px"}}>{tab==="dashboard"?<><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}><div><div style={{fontSize:11,fontWeight:800,letterSpacing:".08em",opacity:.62}}>ENAT • VISÃO NACIONAL</div><h1 style={{margin:"4px 0"}}>Painel Profissional</h1><p style={{margin:0,opacity:.7}}>Dados consolidados para acompanhamento da plataforma e evolução da formação.</p></div><button onClick={loadMetrics}>ATUALIZAR DADOS</button></div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:12,marginTop:18}}><Stat label="INSTRUTORES CADASTRADOS" value={prof.instructors} note="Perfis profissionais"/><Stat label="ALUNOS CADASTRADOS" value={students.total} note="Todos os instrutores"/><Stat label="AULAS REGISTRADAS" value={lessons.total} note={`${lessons.total_hours??0} horas acumuladas`}/><Stat label="HSI-DOTH-P" value={hsi.overall} note={`${hsi.total_assessments??0} avaliações`}/><Stat label="RPA ÚNICO" value={rpa.total_reports} note={`Qualidade média: ${rpa.overall_quality??"—"}`}/><Stat label="CERTIFICADOS" value={certificates.total_issued} note="Certificados registrados"/></div><Section title="Profissionais — distribuição por estado"><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:8,marginTop:12}}>{(prof.by_uf||[]).map(x=><div key={x.uf} style={{padding:12,border:"1px solid #e1e7ef",borderRadius:10}}><b>{x.uf}</b><div style={{fontSize:22,fontWeight:900,marginTop:4}}>{x.count}</div><small>instrutor(es)</small></div>)}</div></Section><Section title="Alunos — categoria da CNH"><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:8,marginTop:12}}>{(students.by_category||[]).map(x=><div key={x.category} style={{padding:12,border:"1px solid #e1e7ef",borderRadius:10}}><b>CNH {x.category}</b><div style={{fontSize:22,fontWeight:900,marginTop:4}}>{x.count}</div><small>aluno(s)</small></div>)}</div></Section><Section title="Aulas — carga horária por categoria"><div style={{overflowX:"auto",marginTop:10}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr><th style={{textAlign:"left",padding:9}}>Categoria</th><th style={{padding:9}}>Aulas</th><th style={{padding:9}}>Minutos</th><th style={{padding:9}}>Horas</th></tr></thead><tbody>{(lessons.by_category||[]).map(x=><tr key={x.category} style={{borderTop:"1px solid #e5eaf0"}}><td style={{padding:9}}><b>CNH {x.category}</b></td><td style={{padding:9,textAlign:"center"}}>{x.lessons}</td><td style={{padding:9,textAlign:"center"}}>{x.minutes}</td><td style={{padding:9,textAlign:"center"}}>{x.hours}</td></tr>)}</tbody></table></div></Section><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))",gap:16}}><Section title="HSI-DOTH-P — geral e por estado"><div style={{marginTop:12}}><b>Média geral:</b> {hsi.overall??"—"}</div><div style={{overflowX:"auto",marginTop:10}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr><th style={{textAlign:"left",padding:8}}>UF</th><th style={{padding:8}}>Avaliações</th><th style={{padding:8}}>Média</th></tr></thead><tbody>{(hsi.by_state||[]).map(x=><tr key={x.uf} style={{borderTop:"1px solid #e5eaf0"}}><td style={{padding:8}}>{x.uf}</td><td style={{padding:8,textAlign:"center"}}>{x.assessments}</td><td style={{padding:8,textAlign:"center"}}>{x.average??"—"}</td></tr>)}</tbody></table></div></Section><Section title="RPA ÚNICO — geral e por estado"><div style={{marginTop:12}}><b>RPA:</b> {rpa.total_reports??0} &nbsp; <b>HSI médio:</b> {rpa.overall_hsi??"—"} &nbsp; <b>Qualidade:</b> {rpa.overall_quality??"—"}</div><div style={{overflowX:"auto",marginTop:10}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr><th style={{textAlign:"left",padding:8}}>UF</th><th style={{padding:8}}>RPA</th><th style={{padding:8}}>HSI</th><th style={{padding:8}}>Qualidade</th></tr></thead><tbody>{(rpa.by_state||[]).map(x=><tr key={x.uf} style={{borderTop:"1px solid #e5eaf0"}}><td style={{padding:8}}>{x.uf}</td><td style={{padding:8,textAlign:"center"}}>{x.reports}</td><td style={{padding:8,textAlign:"center"}}>{x.hsi_average??"—"}</td><td style={{padding:8,textAlign:"center"}}>{x.quality_average??"—"}</td></tr>)}</tbody></table></div></Section></div><Section title="Cursos e certificados"><div style={{marginTop:12}}><b>Certificados emitidos e registrados:</b> {certificates.total_issued??0}</div><div style={{overflowX:"auto",marginTop:10}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr><th style={{textAlign:"left",padding:8}}>Curso</th><th style={{padding:8}}>Certificados</th></tr></thead><tbody>{(certificates.by_course||[]).map(x=><tr key={x.course_id} style={{borderTop:"1px solid #e5eaf0"}}><td style={{padding:8}}>{x.course_title}</td><td style={{padding:8,textAlign:"center"}}>{x.count}</td></tr>)}{!(certificates.by_course||[]).length&&<tr><td colSpan="2" style={{padding:10}}>Nenhum certificado foi registrado ainda. A contabilização está pronta para os próximos certificados.</td></tr>}</tbody></table></div></Section><div style={{marginTop:14,padding:12,borderRadius:10,background:"#f4f8fc",fontSize:12,opacity:.8}}>Última atualização: {metrics?.generated_at?new Date(metrics.generated_at).toLocaleString("pt-BR"):"—"}. O painel exibe somente indicadores agregados.</div></>:<><div className="panel"><h1>Conceder acesso livre</h1><p>Libere ou limite o acesso profissional sem editar código ou assinatura manualmente.</p><div className="grid"><label>E-mail da conta<input value={email} onChange={e=>setEmail(e.target.value)} placeholder="usuario@email.com"/></label><label>Validade (opcional)<input type="date" value={expires} onChange={e=>setExpires(e.target.value)}/></label></div><label>Observação<input value={note} onChange={e=>setNote(e.target.value)} placeholder="Ex.: Instrutor beta ENAT"/></label><button disabled={busy} onClick={grant}>{busy?"PROCESSANDO...":"CONCEDER ACESSO"}</button>{msg&&<p className="msg">{msg}</p>}</div><div className="panel"><div style={{display:"flex",gap:10,alignItems:"center",justifyContent:"space-between",flexWrap:"wrap"}}><div><h2>Contas e acessos</h2><small>Pesquisa por nome ou e-mail.</small></div><input value={search} onChange={e=>{setSearch(e.target.value);loadUsers(e.target.value)}} placeholder="Pesquisar..." style={{maxWidth:300}}/></div><div style={{overflowX:"auto",marginTop:14}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr><th style={{textAlign:"left",padding:8}}>Nome</th><th style={{textAlign:"left",padding:8}}>E-mail</th><th style={{padding:8}}>Acesso</th><th style={{padding:8}}>Validade</th><th style={{padding:8}}></th></tr></thead><tbody>{users.map(u=><tr key={u.user_id} style={{borderTop:"1px solid #e5eaf0"}}><td style={{padding:8}}>{u.full_name||"—"}</td><td style={{padding:8}}>{u.email||"—"}</td><td style={{padding:8,textAlign:"center",fontWeight:800}}>{u.access_active?"LIVRE":"—"}</td><td style={{padding:8,textAlign:"center"}}>{u.expires_at?new Date(u.expires_at).toLocaleDateString("pt-BR"):(u.access_active?"PERMANENTE":"—")}</td><td style={{padding:8,textAlign:"right"}}>{u.access_active&&<button className="link" disabled={busy} onClick={()=>revoke(u.user_id)}>REVOGAR</button>}</td></tr>)}</tbody></table></div></div></>}</section></main></div>;
 }
-
-createRoot(document.getElementById("root")).render(<React.StrictMode><AdminAccess /></React.StrictMode>);
+createRoot(document.getElementById("root")).render(<React.StrictMode><AdminAccess/></React.StrictMode>);
