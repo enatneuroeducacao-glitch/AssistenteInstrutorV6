@@ -20,5 +20,63 @@
       import("/src/PredictiveAIOverlay.jsx");
     }
   </script>
+  <style>
+    .dashboard-shell .main-sidebar .nav.icon-nav,
+    .dashboard-shell .main-sidebar > .nav {
+      height: 72px !important;
+      min-height: 72px !important;
+      flex-direction: column !important;
+      justify-content: center !important;
+      align-items: center !important;
+      gap: 5px !important;
+      padding: 7px 6px !important;
+      text-align: center !important;
+      border-radius: 13px !important;
+    }
+    .dashboard-shell .main-sidebar .nav.icon-nav svg,
+    .dashboard-shell .main-sidebar > .nav svg {
+      width: 25px !important;
+      height: 25px !important;
+      flex: 0 0 auto !important;
+    }
+    .dashboard-shell .main-sidebar .nav.icon-nav::after {
+      content: attr(title) !important;
+      display: block !important;
+      color: inherit !important;
+      font-size: 9px !important;
+      line-height: 1.1 !important;
+      font-weight: 800 !important;
+      letter-spacing: .045em !important;
+      text-transform: uppercase !important;
+      white-space: nowrap !important;
+    }
+    .dashboard-shell .main-sidebar .nav.logout span {
+      display: block !important;
+      font-size: 9px !important;
+      line-height: 1.1 !important;
+      font-weight: 800 !important;
+      letter-spacing: .045em !important;
+    }
+    .dashboard-shell .main-sidebar .nav.logout {
+      height: 72px !important;
+      min-height: 72px !important;
+    }
+    @media (max-width: 900px) {
+      .dashboard-shell .main-sidebar {
+        width: 92px !important;
+        flex-basis: 92px !important;
+        padding: 12px 8px !important;
+      }
+      .dashboard-shell .main-sidebar .nav.icon-nav,
+      .dashboard-shell .main-sidebar > .nav {
+        height: 68px !important;
+        min-height: 68px !important;
+      }
+      .dashboard-shell .main-sidebar .nav.icon-nav::after,
+      .dashboard-shell .main-sidebar .nav.logout span {
+        font-size: 8px !important;
+      }
+    }
+  </style>
 </body>
 </html>
