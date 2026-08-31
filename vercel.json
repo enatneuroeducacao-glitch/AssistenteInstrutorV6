@@ -1,0 +1,5 @@
+{
+  "rewrites": [
+    { "source": "/admin-access", "destination": "/index.html" }
+  ]
+}
