@@ -20,7 +20,7 @@ concurrency:
 env:
   VITE_SUPABASE_URL: https://gicjsuagmiyoqvttbqjw.supabase.co
   VITE_SUPABASE_ANON_KEY: sb_publishable_ovAAaIT0nXzSMiy2KYGHTw_ydsshEzK
-  VITE_BASE_PATH: /AssistenteInstrutorV6/
+  VITE_BASE_PATH: /
 
 jobs:
   build:
