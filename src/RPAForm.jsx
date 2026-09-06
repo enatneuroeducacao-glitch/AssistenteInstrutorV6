@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { syncCompletedHSILesson } from "./lib/enatHub";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -35,7 +36,7 @@ export default function RPAForm({ user, onBack }) {
       const [{ data: studentsData, error: studentsError }, { data: reportsData, error: reportsError }] = await Promise.all([
         supabase
           .from("ai_students")
-          .select("id, full_name, category")
+          .select("id, full_name, category, birth_date")
           .eq("user_id", user.id)
           .order("full_name"),
         supabase
@@ -57,16 +58,33 @@ export default function RPAForm({ user, onBack }) {
       if (currentStudent) {
         const { data: lessonsData, error: lessonsError } = await supabase
           .from("ai_lessons")
-          .select("id, student_id, lesson_number, status, started_at, ended_at, km_start, km_end, cnh_category, objective, notes, pedagogical_evaluation")
+          .select("id, student_id, lesson_number, status, started_at, ended_at, km_start, km_end, cnh_category, objective, notes, pedagogical_evaluation, uf, municipality_code")
           .eq("user_id", user.id)
           .eq("student_id", currentStudent)
           .order("lesson_number", { ascending: true });
         if (lessonsError) throw lessonsError;
-        setLessons((lessonsData || []).filter((item) => String(item.status || "").toLowerCase() !== "exam_scheduled"));
+        const normalizedLessons = (lessonsData || []).filter((item) => String(item.status || "").toLowerCase() !== "exam_scheduled");
+        setLessons(normalizedLessons);
 
         const report = (reportsData || []).find((item) => String(item.student_id) === String(currentStudent));
         setSynthesis(report?.latest_notes || "");
         setContinuityPlan(report?.continuity_plan || "");
+
+        // Phase 2 integration bridge: reconcile completed HSI-DOTH-P lessons with Central.
+        // Central idempotency is based on source_system_id + opaque source_record_id.
+        const student = (studentsData || []).find((item) => String(item.id) === String(currentStudent));
+        for (const lesson of normalizedLessons.filter((item) => String(item.status || "").toLowerCase() === "completed")) {
+          try {
+            await syncCompletedHSILesson(lesson, {
+              studentBirthDate: student?.birth_date || null,
+              uf: lesson.uf || null,
+              municipalityCode: lesson.municipality_code || null,
+            });
+          } catch (syncError) {
+            // Central availability must never block local NeuroDrive/RPA operation.
+            console.warn("Sincronização HSI-DOTH-P com a Central pendente:", syncError);
+          }
+        }
       } else {
         setLessons([]);
       }
@@ -99,7 +117,7 @@ export default function RPAForm({ user, onBack }) {
 
     const { data, error } = await supabase
       .from("ai_lessons")
-      .select("id, student_id, lesson_number, status, started_at, ended_at, km_start, km_end, cnh_category, objective, notes, pedagogical_evaluation")
+      .select("id, student_id, lesson_number, status, started_at, ended_at, km_start, km_end, cnh_category, objective, notes, pedagogical_evaluation, uf, municipality_code")
       .eq("user_id", user.id)
       .eq("student_id", value)
       .order("lesson_number", { ascending: true });
@@ -108,7 +126,21 @@ export default function RPAForm({ user, onBack }) {
       setMsg(error.message);
       return;
     }
-    setLessons((data || []).filter((item) => String(item.status || "").toLowerCase() !== "exam_scheduled"));
+    const normalizedLessons = (data || []).filter((item) => String(item.status || "").toLowerCase() !== "exam_scheduled");
+    setLessons(normalizedLessons);
+
+    const student = students.find((item) => String(item.id) === String(value));
+    for (const lesson of normalizedLessons.filter((item) => String(item.status || "").toLowerCase() === "completed")) {
+      try {
+        await syncCompletedHSILesson(lesson, {
+          studentBirthDate: student?.birth_date || null,
+          uf: lesson.uf || null,
+          municipalityCode: lesson.municipality_code || null,
+        });
+      } catch (syncError) {
+        console.warn("Sincronização HSI-DOTH-P com a Central pendente:", syncError);
+      }
+    }
   }
 
   const report = reports.find((item) => String(item.student_id) === String(selectedStudentId));
