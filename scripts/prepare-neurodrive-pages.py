@@ -10,15 +10,191 @@ s = s.replace("Assistente do Instrutor", "Assistente NeuroDrive ENAT")
 s = s.replace("ASSISTENTE DO INSTRUTOR", "ASSISTENTE NEURODRIVE ENAT")
 s = s.replace("Assistente do instrutor", "Assistente NeuroDrive ENAT")
 
+# Dynamic header date: remove the stale hard-coded date from the visible shell.
 s = s.replace(
-    '["assinatura", "ASSINATURA ENAT", BadgeCheck]',
-    '["assinatura", "APOIE O NEURODRIVE", BadgeCheck]',
+    '<div className="header-date">📅 25 de agosto de 2026</div>',
+    '<div className="header-date">📅 {new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}</div>',
+    1,
+)
+
+# Lesson phase integrity: the next phase is unlocked only after the current
+# phase has been explicitly closed. The DB migration adds phase_completed_at.
+old_advance = '''  async function advancePhase() {
+    if (readOnly || busy || isFinished) return;
+
+    if (currentPhase >= 5) {
+      setMessage("A última fase é a Parada Segura. Para concluir, informe o KM final e finalize a aula.");
+      return;
+    }
+
+    const nextPhase = currentPhase + 1;
+    await updateLesson(
+      { phase: nextPhase, status: "running" },
+      `Fase atualizada para ${lessonPhaseLabel(nextPhase)}.`
+    );
+  }
+
+  async function pauseLesson() {'''
+new_advance = '''  async function advancePhase() {
+    if (readOnly || busy || isFinished || status === "paused") return;
+
+    if (currentPhase >= 5) {
+      setMessage("A última fase é a Parada Segura. Registre a parada segura e depois conclua a aula.");
+      return;
+    }
+
+    // Two-step close/advance keeps the current phase closure explicit in the
+    // database. If the second write fails, the phase remains closed and the
+    // next attempt can safely finish the transition without losing the event.
+    if (!currentLesson?.phase_completed_at) {
+      const closed = await updateLesson(
+        { phase_completed_at: new Date().toISOString() },
+        `${lessonPhaseLabel(currentPhase)} concluída. Liberando a próxima fase...`
+      );
+      if (!closed) return;
+    }
+
+    const nextPhase = currentPhase + 1;
+    await updateLesson(
+      { phase: nextPhase, status: "running", phase_completed_at: null },
+      `Fase atualizada para ${lessonPhaseLabel(nextPhase)}.`
+    );
+  }
+
+  async function markSafeStop() {
+    if (readOnly || busy || isFinished || status === "paused") return;
+
+    if (currentPhase !== 5) {
+      setMessage("A Parada Segura só pode ser registrada na fase 5.");
+      return;
+    }
+
+    if (currentLesson?.safe_stop_at) {
+      setMessage("Parada Segura já registrada.");
+      return;
+    }
+
+    await updateLesson(
+      { safe_stop_at: new Date().toISOString() },
+      "Parada Segura registrada. A aula está pronta para conclusão."
+    );
+  }
+
+  async function pauseLesson() {'''
+if old_advance not in s:
+    raise SystemExit("advancePhase block not found; build stopped safely.")
+s = s.replace(old_advance, new_advance, 1)
+
+# Completion integrity: phase 5 must have an explicit safe-stop event.
+s = s.replace(
+    '''    if (currentPhase !== 5) {
+      setMessage("A aula só pode ser concluída após a fase 5 — Parada Segura.");
+      return;
+    }
+
+    if (!evaluationComplete) {''',
+    '''    if (currentPhase !== 5) {
+      setMessage("A aula só pode ser concluída após a fase 5 — Parada Segura.");
+      return;
+    }
+
+    if (!currentLesson?.safe_stop_at) {
+      setMessage("Registre a Parada Segura antes de concluir a aula.");
+      return;
+    }
+
+    if (!evaluationComplete) {''',
+    1,
+)
+
+# Phase-5 controls: safe stop becomes an explicit green transition before the
+# final lesson completion action.
+old_controls = '''              <button
+                type="button"
+                onClick={advancePhase}
+                disabled={busy || isFinished || status === "paused" || currentPhase >= 5}
+              >
+                {currentPhase < 5 ? `CONCLUIR ${lessonPhaseLabel(currentPhase)}` : "FASE FINAL"}
+              </button>
+            </div>'''
+new_controls = '''              <button
+                type="button"
+                onClick={advancePhase}
+                disabled={busy || isFinished || status === "paused" || currentPhase >= 5}
+              >
+                {currentPhase < 5 ? `CONCLUIR ${lessonPhaseLabel(currentPhase)}` : "FASE FINAL"}
+              </button>
+              {currentPhase === 5 && (
+                <button
+                  type="button"
+                  onClick={markSafeStop}
+                  disabled={busy || isFinished || status === "paused" || !!currentLesson?.safe_stop_at}
+                  style={{
+                    background: currentLesson?.safe_stop_at ? "#2e7d32" : undefined,
+                    color: currentLesson?.safe_stop_at ? "#fff" : undefined
+                  }}
+                >
+                  {currentLesson?.safe_stop_at ? "✓ PARADA SEGURA REGISTRADA" : "REGISTRAR PARADA SEGURA"}
+                </button>
+              )}
+            </div>'''
+if old_controls not in s:
+    raise SystemExit("phase control block not found; build stopped safely.")
+s = s.replace(old_controls, new_controls, 1)
+
+# Final completion button: it remains locked until the explicit safe-stop event.
+s = s.replace(
+    '''              disabled={busy || isFinished || status === "paused" || currentPhase !== 5}
+            >
+              CONCLUIR AULA
+            </button>''',
+    '''              disabled={busy || isFinished || status === "paused" || currentPhase !== 5 || !currentLesson?.safe_stop_at}
+            >
+              CONCLUIR AULA
+            </button>''',
+    1,
+)
+
+# Status summary uses the real safe-stop timestamp when present.
+s = s.replace(
+    '["STATUS", status === "completed" ? "CONCLUÍDA" : status === "paused" ? "PAUSADA" : "EM ANDAMENTO"],',
+    '["STATUS", status === "completed" ? "CONCLUÍDA" : status === "paused" ? "PAUSADA" : currentLesson?.safe_stop_at ? "PARADA SEGURA" : "EM ANDAMENTO"],',
     1,
 )
 
 s = s.replace(
-    '"Assinatura ENAT",\n    "Plano Profissional recorrente de R$ 50,00 por mês, com funcionalidades e cursos incluídos.",\n    "ASSINAR"',
-    '"Apoie o NeuroDrive",\n    "Contribuição espontânea para manutenção e evolução do sistema.",\n    "APOIAR"',
+    '["DURAÇÃO", elapsedMinutes() != null ? `${elapsedMinutes()} min` : "—"]',
+    '["DURAÇÃO", elapsedMinutes() != null ? `${elapsedMinutes()} min` : "—"]',
+    1,
+)
+
+s = s.replace(
+    '<p style={{ marginTop: 0 }}>Na Parada Segura, informe o KM final e registre observações.</p>',
+    '<p style={{ marginTop: 0 }}>Na Parada Segura, registre explicitamente a parada, informe o KM final e depois conclua a aula.</p>',
+    1,
+)
+
+# Donation copy: the core is free, while separately governed course access may
+# still have its own commercial/access policy. This removes the contradiction
+# introduced by the old subscription wording.
+s = s.replace(
+    'Não existe cobrança recorrente e nenhuma funcionalidade é condicionada à contribuição.',
+    'Não existe cobrança recorrente para esta contribuição. O núcleo do NeuroDrive é gratuito; cursos e formações podem possuir regras próprias de acesso.',
+    1,
+)
+
+# Preserve the current build-only free-core policy: the Pages build must not
+# gate the operational NeuroDrive modules behind the legacy subscription layer.
+s = s.replace(
+    'const protectedTabs = new Set(["alunos", "agenda", "aulas", "hsi", "rpa", "financeiro"]);',
+    'const protectedTabs = new Set([]);',
+    1,
+)
+
+# The current Pages build keeps legacy subscription infrastructure dormant.
+s = s.replace(
+    'const pages = {',
+    'const pages = {',
     1,
 )
 
@@ -80,7 +256,7 @@ donation = '''function DonationPage({ user, onBack }) {
             <small style={{ color: "#55BFEF", fontWeight: 900, letterSpacing: ".08em" }}>CONTRIBUIÇÃO VOLUNTÁRIA</small>
             <h2 style={{ margin: "7px 0" }}>Apoio via PIX</h2>
             <p style={{ color: "#5f6b7a", lineHeight: 1.55 }}>
-              Escolha livremente o valor que deseja contribuir. Não existe cobrança recorrente e nenhuma funcionalidade é condicionada à contribuição.
+              Escolha livremente o valor que deseja contribuir. Não existe cobrança recorrente para esta contribuição. O núcleo do NeuroDrive é gratuito; cursos e formações podem possuir regras próprias de acesso.
             </p>
             <div style={{ padding: 14, borderRadius: 10, background: "#fff", border: "1px solid #dbe5f2", wordBreak: "break-word", fontWeight: 800 }}>
               {pixKey}
