@@ -14,9 +14,12 @@ concurrency:
   group: "neurodrive-pages"
   cancel-in-progress: true
 
+# NeuroDrive uses the dedicated HSI-DOTH-P-G Supabase project.
+# The browser key is a publishable/anon key and is safe to ship to the client;
+# database access remains protected by Supabase Auth + RLS.
 env:
-  VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-  VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+  VITE_SUPABASE_URL: https://gicjsuagmiyoqvttbqjw.supabase.co
+  VITE_SUPABASE_ANON_KEY: sb_publishable_ovAAaIT0nXzSMiy2KYGHTw_ydsshEzK
   VITE_BASE_PATH: /AssistenteInstrutorV6/
 
 jobs:
