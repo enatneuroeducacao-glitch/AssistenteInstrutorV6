@@ -3,6 +3,13 @@ from pathlib import Path
 p = Path("src/main.jsx")
 s = p.read_text(encoding="utf-8")
 
+# Visible product identity: keep internal code names intact, but present
+# the user-facing application consistently as Assistente NeuroDrive ENAT.
+s = s.replace("ENAT - Assistente do Instrutor", "Assistente NeuroDrive ENAT")
+s = s.replace("Assistente do Instrutor", "Assistente NeuroDrive ENAT")
+s = s.replace("ASSISTENTE DO INSTRUTOR", "ASSISTENTE NEURODRIVE ENAT")
+s = s.replace("Assistente do instrutor", "Assistente NeuroDrive ENAT")
+
 s = s.replace(
     '["assinatura", "ASSINATURA ENAT", BadgeCheck]',
     '["assinatura", "APOIE O NEURODRIVE", BadgeCheck]',
