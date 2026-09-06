@@ -2,47 +2,122 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>NEURODRIVE INSTRUTOR ENAT-HSI</title>
   <link rel="icon" type="image/png" href="./enat-logo.png?v=2" />
   <link rel="shortcut icon" type="image/png" href="./enat-logo.png?v=2" />
   <link rel="apple-touch-icon" href="./enat-logo.png?v=2" />
   <link rel="stylesheet" href="./neurodrive-theme-v1.css" />
   <style>
-    /* Custom-domain visual correction: preserve both institutional identities. */
+    /* Login identity lockup: original Neurociência + original ENAT logos. */
     .auth{
+      position:relative!important;
       flex-direction:row!important;
       gap:28px!important;
     }
+
+    /* Neurociência Aplicada ao Trânsito — full original artwork. */
+    .auth:before{
+      content:""!important;
+      display:block!important;
+      position:absolute!important;
+      left:max(24px,calc(50% - 610px))!important;
+      top:50%!important;
+      transform:translateY(-50%)!important;
+      width:250px!important;
+      height:250px!important;
+      background-image:url("./neurociencia-aplicada.webp")!important;
+      background-repeat:no-repeat!important;
+      background-position:center!important;
+      background-size:contain!important;
+      opacity:1!important;
+      z-index:2!important;
+      pointer-events:none!important;
+      filter:drop-shadow(0 18px 34px rgba(0,0,0,.34))!important;
+    }
+
+    /* ENAT institutional identity. */
     .auth:after{
-      left:auto!important;
+      content:""!important;
+      display:block!important;
+      position:absolute!important;
       right:max(24px,calc(50% - 610px))!important;
+      left:auto!important;
+      top:50%!important;
+      transform:translateY(-50%)!important;
+      width:250px!important;
+      height:250px!important;
       background-image:url("./enat-logo.png?v=2")!important;
       background-repeat:no-repeat!important;
       background-position:center!important;
       background-size:contain!important;
-      width:250px!important;
-      height:250px!important;
       opacity:1!important;
       z-index:2!important;
+      pointer-events:none!important;
+      filter:drop-shadow(0 18px 34px rgba(0,0,0,.30))!important;
     }
+
+    /* The React ENAT panel is retained for mobile, where it provides the institutional title. */
     .auth > div:first-of-type{
       display:none!important;
     }
+
     @media (max-width:1050px){
       .auth{
         flex-direction:column!important;
-        gap:18px!important;
+        gap:14px!important;
+        justify-content:flex-start!important;
+        padding-top:18px!important;
       }
-      /* On mobile/tablet the ENAT identity returns to the normal document flow. */
+
+      /* Mobile: show the complete Neurociência logo at the top. */
+      .auth:before{
+        left:50%!important;
+        top:10px!important;
+        transform:translateX(-50%)!important;
+        width:132px!important;
+        height:132px!important;
+        display:block!important;
+      }
+
+      /* ENAT becomes the normal-flow panel below the Neurociência logo. */
+      .auth:after{
+        display:none!important;
+      }
+
       .auth > div:first-of-type{
         display:flex!important;
         width:100%!important;
         max-width:420px!important;
+        margin-top:132px!important;
         margin-bottom:0!important;
       }
-      .auth:after{
-        display:none!important;
+    }
+
+    @media (max-width:650px){
+      .auth{
+        gap:12px!important;
+        padding-left:10px!important;
+        padding-right:10px!important;
+      }
+      .auth:before{
+        width:118px!important;
+        height:118px!important;
+        top:8px!important;
+      }
+      .auth > div:first-of-type{
+        max-width:420px!important;
+        margin-top:116px!important;
+      }
+    }
+
+    @media (max-width:380px){
+      .auth:before{
+        width:108px!important;
+        height:108px!important;
+      }
+      .auth > div:first-of-type{
+        margin-top:108px!important;
       }
     }
   </style>
