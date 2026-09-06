@@ -10,10 +10,6 @@ const INSTRUMENT_VERSION = "1.0";
 const LESSONS_REST_PATH = "/rest/v1/ai_lessons";
 const SYNC_GUARD = "__ENAT_HSI_LESSON_FETCH_BRIDGE__";
 
-/**
- * Creates a deterministic opaque UUID from a local lesson UUID.
- * The Central Hub receives only this derived technical identifier.
- */
 export async function buildStableHSISourceRecordId(localRecordId) {
   if (!localRecordId) throw new Error("localRecordId é obrigatório.");
   if (!globalThis.crypto?.subtle) throw new Error("Web Crypto não está disponível.");
@@ -21,8 +17,6 @@ export async function buildStableHSISourceRecordId(localRecordId) {
   const bytes = new TextEncoder().encode(`ENAT-HSI:${localRecordId}`);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   const hash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-
-  // UUID-shaped opaque identifier; the original local id is never transmitted.
   return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-5${hash.slice(13, 16)}-8${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
 }
 
@@ -83,6 +77,33 @@ function parseHSINote(notes) {
   }
 }
 
+function normalizeHSIStructuredValue(value) {
+  if (!value || typeof value !== "object") return null;
+  const scores = value.scores && typeof value.scores === "object" ? value.scores : value;
+  const normalizedScores = {};
+  for (const key of ["D", "O", "T", "H", "P"]) {
+    const number = Number(scores[key]);
+    if (!Number.isFinite(number) || number < 1 || number > 5) return null;
+    normalizedScores[key] = number;
+  }
+
+  const average = Number(value.average ?? Object.values(normalizedScores).reduce((sum, item) => sum + item, 0) / 5);
+  const normalizedScore = Number(value.normalized_score ?? average * 20);
+  if (!Number.isFinite(average) || !Number.isFinite(normalizedScore)) return null;
+
+  return {
+    scores: normalizedScores,
+    average: Number(average.toFixed(2)),
+    normalized_score: Number(Math.max(0, Math.min(100, normalizedScore)).toFixed(0)),
+    classification: value.classification || null,
+    completed_at: value.completed_at || null,
+  };
+}
+
+function extractHSIFromLesson(lesson) {
+  return normalizeHSIStructuredValue(lesson?.hsi_evaluation) || parseHSINote(lesson?.notes);
+}
+
 export function normalizeHSIAgeBand(birthDate) {
   if (!birthDate) return null;
   const birth = new Date(`${birthDate}T00:00:00`);
@@ -100,13 +121,10 @@ export function normalizeHSIAgeBand(birthDate) {
   return "65+";
 }
 
-/**
- * Syncs a completed local lesson. Failure is deliberately non-blocking.
- */
 export async function syncCompletedHSILesson(lesson, { studentBirthDate = null, uf = null, municipalityCode = null } = {}) {
   if (!lesson?.id || String(lesson.status || "").toLowerCase() !== "completed") return { skipped: true };
 
-  const hsi = parseHSINote(lesson.notes);
+  const hsi = extractHSIFromLesson(lesson);
   if (!hsi) return { skipped: true, reason: "HSI-DOTH-P não encontrado" };
 
   const sourceRecordId = await buildStableHSISourceRecordId(lesson.id);
@@ -131,17 +149,25 @@ export async function syncCompletedHSILesson(lesson, { studentBirthDate = null, 
   });
 }
 
-/**
- * Direct completion bridge.
- *
- * main.jsx imports RPAForm at application startup, so this module is loaded
- * before a lesson is executed. We observe only successful REST representations
- * of ai_lessons updates and trigger the Central sync when the returned lesson
- * is actually completed. No local PII is sent to the Central Hub.
- *
- * The guard makes the bridge idempotent at the browser-hook level and avoids
- * installing multiple fetch wrappers during React StrictMode/HMR reloads.
- */
+function injectStructuredHSIIntoPatch(init, url) {
+  if (!init?.body || !url.includes(LESSONS_REST_PATH)) return init;
+  let body;
+  try {
+    body = typeof init.body === "string" ? JSON.parse(init.body) : null;
+  } catch {
+    return init;
+  }
+  if (!body || typeof body !== "object") return init;
+  if (String(body.status || "").toLowerCase() !== "completed") return init;
+  if (body.hsi_evaluation) return init;
+
+  const hsi = parseHSINote(body.notes);
+  if (!hsi) return init;
+
+  const nextBody = { ...body, hsi_evaluation: normalizeHSIStructuredValue(hsi) || hsi };
+  return { ...init, body: JSON.stringify(nextBody) };
+}
+
 function installLessonCompletionBridge() {
   if (!supabase || typeof window === "undefined" || typeof window.fetch !== "function") return;
   if (window[SYNC_GUARD]) return;
@@ -149,17 +175,16 @@ function installLessonCompletionBridge() {
   const originalFetch = window.fetch.bind(window);
 
   const bridgedFetch = async (...args) => {
-    const response = await originalFetch(...args);
+    const request = args[0];
+    const originalInit = args[1] || {};
+    const url = typeof request === "string" ? request : request?.url || "";
+    const method = String(originalInit.method || request?.method || "GET").toUpperCase();
+    const init = method === "PATCH" ? injectStructuredHSIIntoPatch(originalInit, url) : originalInit;
+
+    const response = await originalFetch(request, init);
 
     try {
-      const request = args[0];
-      const init = args[1] || {};
-      const url = typeof request === "string" ? request : request?.url || "";
-      const method = String(init.method || request?.method || "GET").toUpperCase();
-
-      if (!url.includes(LESSONS_REST_PATH) || method !== "PATCH" || !response.ok) {
-        return response;
-      }
+      if (!url.includes(LESSONS_REST_PATH) || method !== "PATCH" || !response.ok) return response;
 
       const cloned = response.clone();
       const payload = await cloned.json();
@@ -167,19 +192,17 @@ function installLessonCompletionBridge() {
 
       for (const lesson of lessons) {
         if (String(lesson?.status || "").toLowerCase() !== "completed") continue;
-        if (!lesson?.id || !parseHSINote(lesson.notes)) continue;
+        if (!lesson?.id || !extractHSIFromLesson(lesson)) continue;
 
         try {
           const { data: sessionData } = await supabase.auth.getSession();
           const uf = sessionData?.session?.user?.user_metadata?.uf || null;
           await syncCompletedHSILesson(lesson, { uf });
         } catch (syncError) {
-          // Never block or fail the local lesson operation because Central is unavailable.
           console.warn("Sincronização direta HSI-DOTH-P com a Central pendente:", syncError);
         }
       }
     } catch (bridgeError) {
-      // The response returned to the app is never altered by the bridge.
       console.warn("Ponte direta ENAT HSI não pôde processar a conclusão:", bridgeError);
     }
 
