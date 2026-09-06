@@ -4,9 +4,36 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NEURODRIVE INSTRUTOR ENAT-HSI</title>
-  <link rel="icon" type="image/png" href="./enat-logo.png" />
-  <link rel="apple-touch-icon" href="./enat-logo.png" />
+  <link rel="icon" type="image/png" href="./enat-logo.png?v=2" />
+  <link rel="shortcut icon" type="image/png" href="./enat-logo.png?v=2" />
+  <link rel="apple-touch-icon" href="./enat-logo.png?v=2" />
   <link rel="stylesheet" href="./neurodrive-theme-v1.css" />
+  <style>
+    /* Custom-domain visual correction: preserve both institutional identities. */
+    .auth{
+      flex-direction:row!important;
+      gap:28px!important;
+    }
+    .auth:after{
+      left:auto!important;
+      right:max(24px,calc(50% - 610px))!important;
+      background-image:url("./enat-logo.png?v=2")!important;
+      background-repeat:no-repeat!important;
+      background-position:center!important;
+      background-size:contain!important;
+      width:250px!important;
+      height:250px!important;
+      opacity:1!important;
+      z-index:2!important;
+    }
+    .auth > div:first-of-type{
+      display:none!important;
+    }
+    @media (max-width:1050px){
+      .auth{gap:18px!important;}
+      .auth:after{display:none!important;}
+    }
+  </style>
 </head>
 <body>
   <div id="root"></div>
