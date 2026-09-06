@@ -38,6 +38,19 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Open core access policy for Pages build
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("src/main.jsx")
+          s = p.read_text(encoding="utf-8")
+          old = 'const protectedTabs = new Set(["alunos", "agenda", "aulas", "hsi", "rpa", "financeiro"]);'
+          new = 'const protectedTabs = new Set([]);'
+          if old not in s:
+              raise SystemExit("Expected access-policy declaration was not found; build stopped safely.")
+          p.write_text(s.replace(old, new, 1), encoding="utf-8")
+          PY
+
       - name: Build Vite application
         run: npm run build
 
