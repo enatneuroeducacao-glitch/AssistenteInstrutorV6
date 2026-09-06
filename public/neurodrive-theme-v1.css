@@ -1,15 +1,13 @@
-/* NeuroDrive ENAT-HSI — visual layer v1 */
+/* NeuroDrive ENAT-HSI — visual layer v2 */
 :root{--nd-navy:#061426;--nd-navy-2:#0b2745;--nd-cyan:#55bff0;--nd-blue:#1976d2;--nd-gold:#d7a83d;--nd-white:#f8fbff;--nd-muted:#a9bbcd}
 body{background:#061426!important}
-.auth{min-height:100vh!important;justify-content:center!important;padding:24px 16px 40px!important;background:radial-gradient(circle at 50% -10%,rgba(85,191,240,.20),transparent 38%),linear-gradient(145deg,#040b14 0%,#071b30 52%,#0b3153 100%)!important}
-.auth:after{content:"";position:fixed;inset:auto 0 0;height:34vh;pointer-events:none;background:linear-gradient(180deg,transparent,rgba(0,0,0,.22));z-index:0}
-.auth>div,.auth>form{position:relative!important;z-index:2!important}
-.auth>div:first-child{max-width:480px!important;padding:24px 24px 20px!important;border-radius:24px!important;background:linear-gradient(180deg,rgba(5,10,17,.98),rgba(7,19,32,.98))!important;border:1px solid rgba(85,191,240,.30)!important;box-shadow:0 24px 70px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.025) inset!important;margin-bottom:12px!important}
-.auth>div:first-child img{width:175px!important;content:url("/AssistenteInstrutorV6/enat-logo.png")!important;filter:drop-shadow(0 10px 22px rgba(85,191,240,.14))}
-.auth>div:first-child>div:last-child{font-size:0!important;margin-top:16px!important;line-height:1.15!important}
-.auth>div:first-child>div:last-child:before{content:"NEURODRIVE";display:block;color:#fff;font-size:25px;font-weight:950;letter-spacing:.10em}
-.auth>div:first-child>div:last-child:after{content:"INSTRUTOR ENAT-HSI";display:block;color:var(--nd-cyan);font-size:11px;font-weight:900;letter-spacing:.18em;margin-top:5px}
-.auth .card{width:min(480px,96vw)!important;padding:28px!important;border-radius:22px!important;background:rgba(250,252,255,.985)!important;box-shadow:0 26px 70px rgba(0,0,0,.28)!important;border:1px solid rgba(255,255,255,.85)!important}
+.auth{position:relative!important;min-height:100vh!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:32px 24px 40px!important;box-sizing:border-box!important;overflow:hidden!important;background:radial-gradient(circle at 50% -10%,rgba(85,191,240,.20),transparent 38%),linear-gradient(145deg,#040b14 0%,#071b30 52%,#0b3153 100%)!important}
+.auth:before,.auth:after{content:"";position:absolute;top:50%;transform:translateY(-50%);width:250px;height:250px;background-repeat:no-repeat;background-position:center;background-size:contain;filter:drop-shadow(0 18px 34px rgba(0,0,0,.34));z-index:1;pointer-events:none}
+.auth:before{left:max(24px,calc(50% - 610px));background-image:url("/AssistenteInstrutorV6/neurociencia-aplicada.webp")}
+.auth:after{right:max(24px,calc(50% - 610px));background-image:url("/AssistenteInstrutorV6/enat-logo.png")}
+.auth>div:first-child{display:none!important}
+.auth>form{position:relative!important;z-index:3!important}
+.auth .card{width:min(440px,94vw)!important;padding:30px!important;border-radius:22px!important;background:rgba(250,252,255,.985)!important;box-shadow:0 26px 70px rgba(0,0,0,.34)!important;border:1px solid rgba(255,255,255,.88)!important}
 .auth .card h1{font-size:30px!important;color:#0b2847!important;margin-bottom:16px!important}
 .auth .card h1:after{width:58px!important;height:4px!important;background:linear-gradient(90deg,var(--nd-cyan),var(--nd-blue))!important}
 .auth .card input,.auth .card select{min-height:52px!important;border-radius:13px!important;background:#f8fbfe!important;border-color:#cfddea!important;font-size:16px!important}
@@ -21,4 +19,5 @@ body{background:#061426!important}
 .dashboard-shell .sidebar-brand small{font-size:9px!important;letter-spacing:.16em!important;color:var(--nd-cyan)!important}
 .dashboard-shell header{background:rgba(248,251,255,.96)!important}
 .dashboard-shell main{background:#f4f8fc!important}
-@media(max-width:650px){.auth{padding:14px 10px 28px!important}.auth>div:first-child{padding:18px 16px 16px!important;border-radius:20px!important}.auth>div:first-child img{width:145px!important}.auth>div:first-child>div:last-child:before{font-size:22px!important}.auth .card{padding:22px 18px!important}.auth .card h1{font-size:28px!important}}
+@media(max-width:1100px){.auth:before,.auth:after{width:190px;height:190px}.auth:before{left:18px}.auth:after{right:18px}.auth .card{width:min(420px,58vw)!important}}
+@media(max-width:760px){.auth{padding:22px 14px 30px}.auth:before,.auth:after{width:130px;height:130px;top:18px;transform:none}.auth:before{left:12px}.auth:after{right:12px}.auth .card{width:min(440px,96vw)!important;margin-top:130px!important;padding:22px 18px!important}.auth .card h1{font-size:28px!important}}
