@@ -1,0 +1,1 @@
+Backup marker for main commit 9a30d4568f3775fb46187dda14df04c5825a3e38 before left-logo visibility fix. Created 2026-09-06.
