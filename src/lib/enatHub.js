@@ -7,6 +7,8 @@ const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supa
 const SOURCE_KEY = "assistenteinstrutorv6";
 const INSTRUMENT = "HSI-DOTH-P";
 const INSTRUMENT_VERSION = "1.0";
+const LESSONS_REST_PATH = "/rest/v1/ai_lessons";
+const SYNC_GUARD = "__ENAT_HSI_LESSON_FETCH_BRIDGE__";
 
 /**
  * Creates a deterministic opaque UUID from a local lesson UUID.
@@ -128,3 +130,64 @@ export async function syncCompletedHSILesson(lesson, { studentBirthDate = null, 
     payloadDigest: null,
   });
 }
+
+/**
+ * Direct completion bridge.
+ *
+ * main.jsx imports RPAForm at application startup, so this module is loaded
+ * before a lesson is executed. We observe only successful REST representations
+ * of ai_lessons updates and trigger the Central sync when the returned lesson
+ * is actually completed. No local PII is sent to the Central Hub.
+ *
+ * The guard makes the bridge idempotent at the browser-hook level and avoids
+ * installing multiple fetch wrappers during React StrictMode/HMR reloads.
+ */
+function installLessonCompletionBridge() {
+  if (!supabase || typeof window === "undefined" || typeof window.fetch !== "function") return;
+  if (window[SYNC_GUARD]) return;
+
+  const originalFetch = window.fetch.bind(window);
+
+  const bridgedFetch = async (...args) => {
+    const response = await originalFetch(...args);
+
+    try {
+      const request = args[0];
+      const init = args[1] || {};
+      const url = typeof request === "string" ? request : request?.url || "";
+      const method = String(init.method || request?.method || "GET").toUpperCase();
+
+      if (!url.includes(LESSONS_REST_PATH) || method !== "PATCH" || !response.ok) {
+        return response;
+      }
+
+      const cloned = response.clone();
+      const payload = await cloned.json();
+      const lessons = Array.isArray(payload) ? payload : [payload];
+
+      for (const lesson of lessons) {
+        if (String(lesson?.status || "").toLowerCase() !== "completed") continue;
+        if (!lesson?.id || !parseHSINote(lesson.notes)) continue;
+
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const uf = sessionData?.session?.user?.user_metadata?.uf || null;
+          await syncCompletedHSILesson(lesson, { uf });
+        } catch (syncError) {
+          // Never block or fail the local lesson operation because Central is unavailable.
+          console.warn("Sincronização direta HSI-DOTH-P com a Central pendente:", syncError);
+        }
+      }
+    } catch (bridgeError) {
+      // The response returned to the app is never altered by the bridge.
+      console.warn("Ponte direta ENAT HSI não pôde processar a conclusão:", bridgeError);
+    }
+
+    return response;
+  };
+
+  window.fetch = bridgedFetch;
+  window[SYNC_GUARD] = true;
+}
+
+installLessonCompletionBridge();
