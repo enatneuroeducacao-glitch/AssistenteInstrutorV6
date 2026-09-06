@@ -9,79 +9,56 @@
   <link rel="apple-touch-icon" href="./enat-logo.png?v=2" />
   <link rel="stylesheet" href="./neurodrive-theme-v1.css" />
   <style>
-    /* Login identity: the two existing institutional logos side by side. */
+    /* Login brand lockup: existing Neurociência and ENAT artwork only. */
     .auth{
-      justify-content:flex-start!important;
+      position:relative!important;
+      flex-direction:column!important;
       align-items:center!important;
-      gap:12px!important;
-      padding:28px 12px 30px!important;
-      background-image:none!important;
+      justify-content:flex-start!important;
+      gap:10px!important;
+      padding:22px 12px 30px!important;
       overflow:auto!important;
+      background-image:none!important;
     }
 
+    /* Stable brand canvas independent of the nested React logo markup. */
     .auth > div:first-of-type{
       width:min(720px,96vw)!important;
       max-width:720px!important;
+      height:214px!important;
       padding:0!important;
       margin:0!important;
       border:0!important;
       border-radius:0!important;
-      background:transparent!important;
+      background-color:transparent!important;
       box-shadow:none!important;
       box-sizing:border-box!important;
       position:relative!important;
       z-index:2!important;
+      background-image:url("/neurociencia-aplicada.webp"),url("/enat-logo.png?v=3")!important;
+      background-repeat:no-repeat,no-repeat!important;
+      background-size:210px 210px,210px 210px!important;
+      background-position:calc(50% - 115px) 0,calc(50% + 115px) 0!important;
     }
 
-    /* ENATLogo wrapper: two logos in one row, then the product name below. */
-    .auth > div:first-of-type > div:first-child{
-      width:100%!important;
-      display:grid!important;
-      grid-template-columns:1fr 1fr!important;
-      grid-template-rows:auto auto!important;
-      column-gap:24px!important;
-      row-gap:8px!important;
-      align-items:center!important;
-      justify-items:center!important;
-    }
-
-    /* Existing Neurociência artwork — no new image is created. */
-    .auth > div:first-of-type > div:first-child::before{
-      content:""!important;
-      display:block!important;
-      width:min(260px,100%)!important;
-      aspect-ratio:1 / 1!important;
-      background:url("/neurociencia-aplicada.webp") center/contain no-repeat!important;
-      grid-column:1!important;
-      grid-row:1!important;
-    }
-
-    /* Existing ENAT artwork. */
-    .auth > div:first-of-type > div:first-child > img{
-      display:block!important;
-      width:min(260px,100%)!important;
-      max-width:100%!important;
-      height:auto!important;
-      grid-column:2!important;
-      grid-row:1!important;
-      object-fit:contain!important;
-    }
-
-    /* Product identity directly below both logos. */
-    .auth > div:first-of-type > div:first-child + div{
+    .auth > div:first-of-type > *{
       display:none!important;
     }
 
     .auth > div:first-of-type::after{
       content:"NEURODRIVE ENAT"!important;
       display:block!important;
-      margin-top:4px!important;
+      position:absolute!important;
+      left:0!important;
+      right:0!important;
+      bottom:0!important;
       text-align:center!important;
       color:#fff!important;
-      font-size:clamp(22px,4vw,30px)!important;
+      font-size:clamp(23px,4vw,31px)!important;
       font-weight:900!important;
       letter-spacing:.02em!important;
       line-height:1.15!important;
+      white-space:nowrap!important;
     }
 
     .auth .card{
@@ -93,38 +70,29 @@
 
     @media (max-width:650px){
       .auth{
-        gap:10px!important;
-        padding:18px 10px 26px!important;
+        gap:8px!important;
+        padding:14px 10px 26px!important;
       }
 
       .auth > div:first-of-type{
         width:100%!important;
         max-width:520px!important;
-      }
-
-      .auth > div:first-of-type > div:first-child{
-        column-gap:10px!important;
-      }
-
-      .auth > div:first-of-type > div:first-child::before,
-      .auth > div:first-of-type > div:first-child > img{
-        width:min(170px,42vw)!important;
+        height:184px!important;
+        background-size:170px 170px,170px 170px!important;
+        background-position:calc(50% - 92px) 0,calc(50% + 92px) 0!important;
       }
 
       .auth > div:first-of-type::after{
-        margin-top:2px!important;
+        bottom:0!important;
         font-size:24px!important;
       }
     }
 
     @media (max-width:380px){
-      .auth > div:first-of-type > div:first-child{
-        column-gap:6px!important;
-      }
-
-      .auth > div:first-of-type > div:first-child::before,
-      .auth > div:first-of-type > div:first-child > img{
-        width:min(145px,42vw)!important;
+      .auth > div:first-of-type{
+        height:158px!important;
+        background-size:145px 145px,145px 145px!important;
+        background-position:calc(50% - 79px) 0,calc(50% + 79px) 0!important;
       }
 
       .auth > div:first-of-type::after{
