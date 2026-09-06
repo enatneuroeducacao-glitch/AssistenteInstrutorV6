@@ -3,8 +3,8 @@
 body{background:#061426!important}
 .auth{position:relative!important;min-height:100vh!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:32px 24px 40px!important;box-sizing:border-box!important;overflow:hidden!important;background:radial-gradient(circle at 50% -10%,rgba(85,191,240,.20),transparent 38%),linear-gradient(145deg,#040b14 0%,#071b30 52%,#0b3153 100%)!important}
 .auth:before,.auth:after{content:""!important;position:absolute!important;top:50%!important;transform:translateY(-50%)!important;width:250px!important;height:250px!important;background-repeat:no-repeat!important;background-position:center!important;background-size:contain!important;filter:drop-shadow(0 18px 34px rgba(0,0,0,.34))!important;z-index:1!important;pointer-events:none!important}
-.auth:before{left:max(24px,calc(50% - 610px))!important;background-image:url("/AssistenteInstrutorV6/neurociencia-aplicada.webp?v=3")!important}
-.auth:after{right:max(24px,calc(50% - 610px))!important;background-image:url("/AssistenteInstrutorV6/enat-logo.png?v=3")!important}
+.auth:before{left:max(24px,calc(50% - 610px))!important;background-image:url("https://raw.githubusercontent.com/enatneuroeducacao-glitch/AssistenteInstrutorV6/main/public/neurociencia-aplicada.webp?v=4")!important}
+.auth:after{right:max(24px,calc(50% - 610px))!important;background-image:url("/AssistenteInstrutorV6/enat-logo.png?v=4")!important}
 .auth>div:first-child{display:none!important}
 .auth>form{position:relative!important;z-index:3!important}
 .auth .card{width:min(440px,94vw)!important;padding:30px!important;border-radius:22px!important;background:rgba(250,252,255,.985)!important;box-shadow:0 26px 70px rgba(0,0,0,.34)!important;border:1px solid rgba(255,255,255,.88)!important}
