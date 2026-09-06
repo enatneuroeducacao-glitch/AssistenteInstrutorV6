@@ -30,8 +30,20 @@
       display:none!important;
     }
     @media (max-width:1050px){
-      .auth{gap:18px!important;}
-      .auth:after{display:none!important;}
+      .auth{
+        flex-direction:column!important;
+        gap:18px!important;
+      }
+      /* On mobile/tablet the ENAT identity returns to the normal document flow. */
+      .auth > div:first-of-type{
+        display:flex!important;
+        width:100%!important;
+        max-width:420px!important;
+        margin-bottom:0!important;
+      }
+      .auth:after{
+        display:none!important;
+      }
     }
   </style>
 </head>
