@@ -1,31 +1,47 @@
-/* NeuroDrive ENAT-HSI — login visual stabilization v3 */
+/* NeuroDrive ENAT-HSI — login visual stabilization v4 */
 
-/* One branding layer only: disable the legacy pseudo-elements. */
-.auth::before,
-.auth::after,
-.auth:before,
+/* IMPORTANT: the Neurociência logo is NOT loaded as an <img>.
+   It uses the proven embedded WebP already present in neurodrive-theme-v1.css.
+   We only reposition that existing layer beside the ENAT logo. */
 .auth:after {
   display: none !important;
   content: none !important;
   background-image: none !important;
 }
 
-/* Keep branding out of normal document flow; show it only while Auth is mounted. */
+.auth:before {
+  display: block !important;
+  content: "" !important;
+  position: absolute !important;
+  top: 24px !important;
+  left: calc(50% - 190px) !important;
+  transform: none !important;
+  width: 150px !important;
+  height: 150px !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: contain !important;
+  /* Do NOT set background-image here: inherit the working embedded image from the theme. */
+  filter: drop-shadow(0 12px 26px rgba(0,0,0,.36)) !important;
+  z-index: 8 !important;
+  pointer-events: none !important;
+}
+
+/* ENAT is the only real <img> in the branding layer. */
 .login-brand-static {
   display: none !important;
   position: absolute !important;
   top: 24px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-  width: min(560px, 92vw) !important;
+  left: calc(50% + 40px) !important;
+  transform: none !important;
+  width: 150px !important;
   height: 150px !important;
   margin: 0 !important;
   padding: 0 !important;
   box-sizing: border-box !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: clamp(14px, 3vw, 34px) !important;
-  z-index: 50 !important;
+  z-index: 10 !important;
   pointer-events: none !important;
 }
 
@@ -35,12 +51,12 @@ body:has(.auth) .login-brand-static {
 
 .login-brand-static img {
   display: block !important;
-  width: clamp(125px, 15vw, 155px) !important;
-  height: clamp(125px, 15vw, 155px) !important;
-  max-width: 43vw !important;
+  width: 150px !important;
+  height: 150px !important;
+  max-width: 150px !important;
   object-fit: contain !important;
   object-position: center !important;
-  filter: drop-shadow(0 10px 24px rgba(0,0,0,.38)) !important;
+  filter: drop-shadow(0 12px 28px rgba(0,0,0,.38)) !important;
 }
 
 /* Suppress the old React identity block so logos cannot duplicate. */
@@ -72,7 +88,6 @@ body:has(.auth) .login-brand-static {
     linear-gradient(145deg, #030a13 0%, #07192d 48%, #0b3152 100%) !important;
 }
 
-/* Login card: stable position below the two centered logos. */
 .auth .card {
   position: relative !important;
   z-index: 20 !important;
@@ -159,16 +174,24 @@ body:has(.auth) .login-brand-static {
 }
 
 @media (max-width: 700px) {
-  .login-brand-static {
-    top: 16px !important;
-    width: 96vw !important;
+  .auth:before {
+    top: 18px !important;
+    left: calc(50% - 150px) !important;
+    width: 118px !important;
     height: 118px !important;
-    gap: 8px !important;
+  }
+
+  .login-brand-static {
+    top: 18px !important;
+    left: calc(50% + 32px) !important;
+    width: 118px !important;
+    height: 118px !important;
   }
 
   .login-brand-static img {
-    width: min(132px, 43vw) !important;
-    height: min(132px, 43vw) !important;
+    width: 118px !important;
+    height: 118px !important;
+    max-width: 118px !important;
   }
 
   .auth {
@@ -185,15 +208,24 @@ body:has(.auth) .login-brand-static {
 }
 
 @media (max-width: 390px) {
+  .auth:before {
+    top: 14px !important;
+    left: calc(50% - 128px) !important;
+    width: 100px !important;
+    height: 100px !important;
+  }
+
   .login-brand-static {
-    top: 10px !important;
-    height: 104px !important;
-    gap: 4px !important;
+    top: 14px !important;
+    left: calc(50% + 28px) !important;
+    width: 100px !important;
+    height: 100px !important;
   }
 
   .login-brand-static img {
-    width: 112px !important;
-    height: 112px !important;
+    width: 100px !important;
+    height: 100px !important;
+    max-width: 100px !important;
   }
 
   .auth {
