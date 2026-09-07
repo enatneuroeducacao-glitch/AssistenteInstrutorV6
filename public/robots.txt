@@ -1,0 +1,9 @@
+# NEURODRIVE INSTRUTOR ENAT-HSI
+# SEO/security preparation: public content may be crawled; protected administrative area must not be indexed.
+
+User-agent: *
+Allow: /
+Disallow: /admin-access
+Disallow: /admin-access/
+
+# Sitemap will be published after the public SEO landing pages and canonical domain structure are finalized.
