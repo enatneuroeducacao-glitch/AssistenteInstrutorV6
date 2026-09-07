@@ -9,99 +9,33 @@
   <link rel="apple-touch-icon" href="./enat-logo.png?v=2" />
   <link rel="stylesheet" href="./neurodrive-theme-v1.css" />
   <style>
-    /* Login brand lockup: existing Neurociência and ENAT artwork only. */
-    .auth{
-      position:relative!important;
-      flex-direction:column!important;
-      align-items:center!important;
-      justify-content:flex-start!important;
-      gap:10px!important;
-      padding:22px 12px 30px!important;
-      overflow:auto!important;
-      background-image:none!important;
-    }
+    /* Login-only branding. The existing artwork is rendered explicitly here. */
+    .login-brand-static{display:none;position:fixed;top:18px;left:50%;transform:translateX(-50%);width:min(760px,96vw);align-items:center;justify-content:center;gap:18px;z-index:1000;pointer-events:none;}
+    .login-brand-static img{display:block;width:180px;height:180px;object-fit:contain;}
+    body:has(.auth) .login-brand-static{display:flex;}
 
-    /* Stable brand canvas independent of the nested React logo markup. */
-    .auth > div:first-of-type{
-      width:min(720px,96vw)!important;
-      max-width:720px!important;
-      height:214px!important;
-      padding:0!important;
-      margin:0!important;
-      border:0!important;
-      border-radius:0!important;
-      background-color:transparent!important;
-      box-shadow:none!important;
-      box-sizing:border-box!important;
-      position:relative!important;
-      z-index:2!important;
-      background-image:url("/neurociencia-aplicada.webp"),url("/enat-logo.png?v=3")!important;
-      background-repeat:no-repeat,no-repeat!important;
-      background-size:210px 210px,210px 210px!important;
-      background-position:calc(50% - 115px) 0,calc(50% + 115px) 0!important;
-    }
-
-    .auth > div:first-of-type > *{
-      display:none!important;
-    }
-
-    .auth > div:first-of-type::after{
-      content:"NEURODRIVE ENAT"!important;
-      display:block!important;
-      position:absolute!important;
-      left:0!important;
-      right:0!important;
-      bottom:0!important;
-      text-align:center!important;
-      color:#fff!important;
-      font-size:clamp(23px,4vw,31px)!important;
-      font-weight:900!important;
-      letter-spacing:.02em!important;
-      line-height:1.15!important;
-      white-space:nowrap!important;
-    }
-
-    .auth .card{
-      width:min(520px,96vw)!important;
-      margin:0!important;
-      position:relative!important;
-      z-index:2!important;
-    }
+    .auth{position:relative!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;gap:12px!important;padding:220px 12px 30px!important;overflow:auto!important;}
+    .auth > div:first-of-type{display:none!important;}
+    .auth .card{width:min(520px,96vw)!important;margin:0!important;position:relative!important;z-index:2!important;}
 
     @media (max-width:650px){
-      .auth{
-        gap:8px!important;
-        padding:14px 10px 26px!important;
-      }
-
-      .auth > div:first-of-type{
-        width:100%!important;
-        max-width:520px!important;
-        height:184px!important;
-        background-size:170px 170px,170px 170px!important;
-        background-position:calc(50% - 92px) 0,calc(50% + 92px) 0!important;
-      }
-
-      .auth > div:first-of-type::after{
-        bottom:0!important;
-        font-size:24px!important;
-      }
+      .login-brand-static{top:10px;width:100%;gap:8px;}
+      .login-brand-static img{width:135px;height:135px;}
+      .auth{gap:8px!important;padding:165px 10px 26px!important;}
     }
 
     @media (max-width:380px){
-      .auth > div:first-of-type{
-        height:158px!important;
-        background-size:145px 145px,145px 145px!important;
-        background-position:calc(50% - 79px) 0,calc(50% + 79px) 0!important;
-      }
-
-      .auth > div:first-of-type::after{
-        font-size:21px!important;
-      }
+      .login-brand-static{gap:4px;}
+      .login-brand-static img{width:120px;height:120px;}
+      .auth{padding-top:150px!important;}
     }
   </style>
 </head>
 <body>
+  <div class="login-brand-static" aria-label="ENAT e Neurociência Aplicada ao Trânsito">
+    <img src="./neurociencia-aplicada.webp" alt="Neurociência Aplicada ao Trânsito" />
+    <img src="./enat-logo.png?v=3" alt="ENAT — Ensino Neuroeducacional Aplicado ao Trânsito" />
+  </div>
   <div id="root"></div>
   <script type="module">
     if (window.location.pathname === "/admin-access") {
