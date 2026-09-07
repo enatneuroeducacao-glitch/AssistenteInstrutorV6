@@ -1,0 +1,25 @@
+-- Pin search_path on security-sensitive helpers and mutable helper functions.
+alter function private.is_system_admin() set search_path = '';
+alter function public.is_admin() set search_path = '';
+alter function public.is_ai_admin() set search_path = '';
+alter function public.ai_is_admin() set search_path = '';
+alter function public.ai_license_status() set search_path = '';
+alter function cmnt_core.has_role(uuid,text) set search_path = '';
+alter function public.current_user_role() set search_path = '';
+alter function public.current_user_organization_id() set search_path = '';
+alter function public.current_user_company_id() set search_path = '';
+alter function public.current_effective_role() set search_path = '';
+alter function public.current_effective_organization_id() set search_path = '';
+alter function public.current_effective_company_id() set search_path = '';
+alter function public.current_effective_state_id() set search_path = '';
+alter function public.current_effective_municipality_id() set search_path = '';
+alter function public.enat_touch_updated_at() set search_path = 'public';
+alter function public.set_ai_service_contract_updated_at() set search_path = 'public';
+alter function public.refresh_service_contract_total() set search_path = 'public';
+alter function public.touch_ai_contract_installment_updated_at() set search_path = 'public';
+alter function public.set_enat_public_content_updated_at() set search_path = 'public';
+alter function public.set_enat_public_testimonials_updated_at() set search_path = 'public';
+alter function public.set_hsi_tenant_from_user_profiles() set search_path = 'public';
+alter function public.render_ai_service_contract(uuid) set search_path = 'public,auth';
+alter function cmnt_core.calculate_hsi_total(numeric,numeric,numeric,numeric,numeric) set search_path = '';
+alter function cmnt_core.classify_hsi(numeric) set search_path = '';
