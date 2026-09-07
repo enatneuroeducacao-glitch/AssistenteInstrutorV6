@@ -8,6 +8,15 @@
   <link rel="shortcut icon" type="image/png" href="./enat-logo.png?v=2" />
   <link rel="apple-touch-icon" href="./enat-logo.png?v=2" />
   <link rel="stylesheet" href="./neurodrive-theme-v1.css" />
+  <script>
+    // Administrative route must never be indexed by search engines.
+    if (window.location.pathname === "/admin-access" || window.location.pathname.startsWith("/admin-access/")) {
+      const meta = document.createElement("meta");
+      meta.name = "robots";
+      meta.content = "noindex, nofollow, noarchive";
+      document.head.appendChild(meta);
+    }
+  </script>
   <style>
     /* Login-only branding. The existing artwork is rendered explicitly here. */
     .login-brand-static{display:none;position:fixed;top:18px;left:50%;transform:translateX(-50%);width:min(760px,96vw);align-items:center;justify-content:center;gap:18px;z-index:1000;pointer-events:none;}
