@@ -1,17 +1,33 @@
-/* NeuroDrive ENAT-HSI — login visual stabilization */
+/* NeuroDrive ENAT-HSI — login visual stabilization v2 */
 
-/* Remove every legacy pseudo-element that was competing with the real artwork. */
-.auth:before,
+/* Keep the proven Neurociência artwork from the original theme and remove only the legacy right-side pseudo element. */
 .auth:after {
   display: none !important;
   content: none !important;
   background-image: none !important;
 }
 
-/* The login brand is a real DOM element, not a background/pseudo-element. */
+.auth:before {
+  display: block !important;
+  content: "" !important;
+  position: absolute !important;
+  top: 92px !important;
+  left: clamp(24px, 10vw, 150px) !important;
+  transform: none !important;
+  width: clamp(150px, 19vw, 225px) !important;
+  height: 150px !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: contain !important;
+  filter: drop-shadow(0 12px 26px rgba(0,0,0,.36)) !important;
+  z-index: 5 !important;
+  pointer-events: none !important;
+}
+
+/* The login brand is a real DOM element containing the ENAT logo. */
 .login-brand-static {
+  display: none !important;
   position: relative !important;
-  display: flex !important;
   width: min(760px, 94vw) !important;
   min-height: 176px !important;
   margin: 0 auto 12px !important;
@@ -19,10 +35,14 @@
   box-sizing: border-box !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: clamp(18px, 4vw, 48px) !important;
+  gap: 24px !important;
   transform: none !important;
   z-index: 10 !important;
   pointer-events: none !important;
+}
+
+body:has(.auth) .login-brand-static {
+  display: flex !important;
 }
 
 .login-brand-static img {
@@ -59,16 +79,6 @@
     radial-gradient(circle at 8% 78%, rgba(25,118,210,.14), transparent 30%),
     radial-gradient(circle at 92% 22%, rgba(215,168,61,.10), transparent 24%),
     linear-gradient(145deg, #030a13 0%, #07192d 48%, #0b3152 100%) !important;
-}
-
-.auth::before,
-.auth::after {
-  display: none !important;
-}
-
-/* Subtle atmospheric light behind the login. */
-.auth {
-  --login-glow: rgba(85,191,240,.15);
 }
 
 .auth .card {
@@ -164,21 +174,22 @@
   margin-top: 12px !important;
 }
 
-/* Small identity line below the card, kept purely visual and non-interactive. */
-.auth::selection {
-  background: rgba(85,191,240,.28);
-}
-
 @media (max-width: 700px) {
   .auth {
     justify-content: flex-start !important;
     padding: 18px 12px 28px !important;
   }
 
+  .auth:before {
+    top: 30px !important;
+    left: 18px !important;
+    width: 118px !important;
+    height: 92px !important;
+  }
+
   .login-brand-static {
     min-height: 126px !important;
     padding-top: 0 !important;
-    gap: 10px !important;
     margin-bottom: 8px !important;
   }
 
@@ -195,9 +206,15 @@
 }
 
 @media (max-width: 390px) {
+  .auth:before {
+    top: 22px !important;
+    left: 10px !important;
+    width: 96px !important;
+    height: 76px !important;
+  }
+
   .login-brand-static {
     min-height: 112px !important;
-    gap: 6px !important;
   }
 
   .login-brand-static img {
