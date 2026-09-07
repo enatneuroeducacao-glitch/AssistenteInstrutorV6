@@ -1,43 +1,31 @@
-/* NeuroDrive ENAT-HSI — login visual stabilization v2 */
+/* NeuroDrive ENAT-HSI — login visual stabilization v3 */
 
-/* Keep the proven Neurociência artwork from the original theme and remove only the legacy right-side pseudo element. */
+/* One branding layer only: disable the legacy pseudo-elements. */
+.auth::before,
+.auth::after,
+.auth:before,
 .auth:after {
   display: none !important;
   content: none !important;
   background-image: none !important;
 }
 
-.auth:before {
-  display: block !important;
-  content: "" !important;
-  position: absolute !important;
-  top: 92px !important;
-  left: clamp(24px, 10vw, 150px) !important;
-  transform: none !important;
-  width: clamp(150px, 19vw, 225px) !important;
-  height: 150px !important;
-  background-repeat: no-repeat !important;
-  background-position: center !important;
-  background-size: contain !important;
-  filter: drop-shadow(0 12px 26px rgba(0,0,0,.36)) !important;
-  z-index: 5 !important;
-  pointer-events: none !important;
-}
-
-/* The login brand is a real DOM element containing the ENAT logo. */
+/* Keep branding out of normal document flow; show it only while Auth is mounted. */
 .login-brand-static {
   display: none !important;
-  position: relative !important;
-  width: min(760px, 94vw) !important;
-  min-height: 176px !important;
-  margin: 0 auto 12px !important;
-  padding: 8px 20px 0 !important;
+  position: absolute !important;
+  top: 24px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: min(560px, 92vw) !important;
+  height: 150px !important;
+  margin: 0 !important;
+  padding: 0 !important;
   box-sizing: border-box !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 24px !important;
-  transform: none !important;
-  z-index: 10 !important;
+  gap: clamp(14px, 3vw, 34px) !important;
+  z-index: 50 !important;
   pointer-events: none !important;
 }
 
@@ -47,65 +35,66 @@ body:has(.auth) .login-brand-static {
 
 .login-brand-static img {
   display: block !important;
-  width: clamp(132px, 17vw, 190px) !important;
-  height: clamp(132px, 17vw, 190px) !important;
-  max-width: 42vw !important;
+  width: clamp(125px, 15vw, 155px) !important;
+  height: clamp(125px, 15vw, 155px) !important;
+  max-width: 43vw !important;
   object-fit: contain !important;
   object-position: center !important;
-  filter: drop-shadow(0 12px 28px rgba(0,0,0,.38)) !important;
+  filter: drop-shadow(0 10px 24px rgba(0,0,0,.38)) !important;
 }
 
-/* Never let the old React brand block create another copy of the logos. */
+/* Suppress the old React identity block so logos cannot duplicate. */
 .auth > div:first-of-type {
   display: none !important;
 }
 
-/* Premium login canvas. */
+/* Full-screen login surface. */
 .auth {
-  min-height: 100vh !important;
-  height: auto !important;
   position: relative !important;
+  min-height: 100vh !important;
+  height: 100vh !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
-  justify-content: center !important;
-  gap: 4px !important;
-  padding: 28px 18px 42px !important;
-  box-sizing: border-box !important;
-  overflow: auto !important;
+  justify-content: flex-start !important;
+  gap: 0 !important;
+  margin: 0 !important;
+  padding: 292px 18px 36px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   isolation: isolate !important;
   background:
-    radial-gradient(circle at 50% 7%, rgba(85,191,240,.22), transparent 28%),
-    radial-gradient(circle at 8% 78%, rgba(25,118,210,.14), transparent 30%),
-    radial-gradient(circle at 92% 22%, rgba(215,168,61,.10), transparent 24%),
+    radial-gradient(circle at 50% 12%, rgba(85,191,240,.20), transparent 30%),
+    radial-gradient(circle at 10% 76%, rgba(25,118,210,.14), transparent 32%),
+    radial-gradient(circle at 90% 24%, rgba(215,168,61,.09), transparent 25%),
     linear-gradient(145deg, #030a13 0%, #07192d 48%, #0b3152 100%) !important;
 }
 
+/* Login card: stable position below the two centered logos. */
 .auth .card {
   position: relative !important;
   z-index: 20 !important;
   width: min(520px, 94vw) !important;
-  margin: 0 !important;
+  margin: 0 auto !important;
   padding: 30px 32px 28px !important;
+  box-sizing: border-box !important;
   border: 1px solid rgba(255,255,255,.72) !important;
   border-radius: 24px !important;
   background: linear-gradient(145deg, rgba(255,255,255,.985), rgba(244,249,255,.965)) !important;
-  box-shadow:
-    0 28px 70px rgba(0,0,0,.30),
-    0 0 0 1px rgba(85,191,240,.08),
-    0 0 42px rgba(85,191,240,.08) !important;
+  box-shadow: 0 28px 70px rgba(0,0,0,.30), 0 0 42px rgba(85,191,240,.08) !important;
   backdrop-filter: blur(18px) !important;
 }
 
 .auth .card::before {
-  content: "";
-  display: block;
-  height: 4px;
-  width: 76px;
-  margin: -2px 0 18px;
-  border-radius: 99px;
-  background: linear-gradient(90deg, #1675d1, #55bff0);
-  box-shadow: 0 4px 14px rgba(22,117,209,.22);
+  content: "" !important;
+  display: block !important;
+  height: 4px !important;
+  width: 76px !important;
+  margin: -2px 0 18px !important;
+  border-radius: 99px !important;
+  background: linear-gradient(90deg, #1675d1, #55bff0) !important;
 }
 
 .auth .card h1 {
@@ -116,6 +105,7 @@ body:has(.auth) .login-brand-static {
   letter-spacing: -.025em !important;
 }
 
+.auth .card h1::after,
 .auth .card h1:after {
   display: none !important;
 }
@@ -128,14 +118,13 @@ body:has(.auth) .login-brand-static {
   border-radius: 13px !important;
   background: rgba(248,251,255,.92) !important;
   color: #142942 !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.7) !important;
 }
 
 .auth .card input:focus,
 .auth .card select:focus {
   border-color: #55bff0 !important;
   background: #fff !important;
-  box-shadow: 0 0 0 4px rgba(85,191,240,.12), 0 5px 16px rgba(20,65,105,.06) !important;
+  box-shadow: 0 0 0 4px rgba(85,191,240,.12) !important;
 }
 
 .auth .card > button[type="submit"] {
@@ -154,7 +143,6 @@ body:has(.auth) .login-brand-static {
 
 .auth .card > button[type="submit"]:hover {
   transform: translateY(-2px) !important;
-  box-shadow: 0 15px 30px rgba(18,89,173,.32) !important;
 }
 
 .auth .card .link {
@@ -170,32 +158,23 @@ body:has(.auth) .login-brand-static {
   background: #edf6fd !important;
 }
 
-.auth .card .msg {
-  margin-top: 12px !important;
-}
-
 @media (max-width: 700px) {
-  .auth {
-    justify-content: flex-start !important;
-    padding: 18px 12px 28px !important;
-  }
-
-  .auth:before {
-    top: 30px !important;
-    left: 18px !important;
-    width: 118px !important;
-    height: 92px !important;
-  }
-
   .login-brand-static {
-    min-height: 126px !important;
-    padding-top: 0 !important;
-    margin-bottom: 8px !important;
+    top: 16px !important;
+    width: 96vw !important;
+    height: 118px !important;
+    gap: 8px !important;
   }
 
   .login-brand-static img {
-    width: min(150px, 42vw) !important;
-    height: min(150px, 42vw) !important;
+    width: min(132px, 43vw) !important;
+    height: min(132px, 43vw) !important;
+  }
+
+  .auth {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    padding: 176px 12px 28px !important;
   }
 
   .auth .card {
@@ -206,20 +185,19 @@ body:has(.auth) .login-brand-static {
 }
 
 @media (max-width: 390px) {
-  .auth:before {
-    top: 22px !important;
-    left: 10px !important;
-    width: 96px !important;
-    height: 76px !important;
-  }
-
   .login-brand-static {
-    min-height: 112px !important;
+    top: 10px !important;
+    height: 104px !important;
+    gap: 4px !important;
   }
 
   .login-brand-static img {
-    width: 128px !important;
-    height: 128px !important;
+    width: 112px !important;
+    height: 112px !important;
+  }
+
+  .auth {
+    padding-top: 154px !important;
   }
 
   .auth .card {
