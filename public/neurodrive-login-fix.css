@@ -1,0 +1,211 @@
+/* NeuroDrive ENAT-HSI — login visual stabilization */
+
+/* Remove every legacy pseudo-element that was competing with the real artwork. */
+.auth:before,
+.auth:after {
+  display: none !important;
+  content: none !important;
+  background-image: none !important;
+}
+
+/* The login brand is a real DOM element, not a background/pseudo-element. */
+.login-brand-static {
+  position: relative !important;
+  display: flex !important;
+  width: min(760px, 94vw) !important;
+  min-height: 176px !important;
+  margin: 0 auto 12px !important;
+  padding: 8px 20px 0 !important;
+  box-sizing: border-box !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: clamp(18px, 4vw, 48px) !important;
+  transform: none !important;
+  z-index: 10 !important;
+  pointer-events: none !important;
+}
+
+.login-brand-static img {
+  display: block !important;
+  width: clamp(132px, 17vw, 190px) !important;
+  height: clamp(132px, 17vw, 190px) !important;
+  max-width: 42vw !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  filter: drop-shadow(0 12px 28px rgba(0,0,0,.38)) !important;
+}
+
+/* Never let the old React brand block create another copy of the logos. */
+.auth > div:first-of-type {
+  display: none !important;
+}
+
+/* Premium login canvas. */
+.auth {
+  min-height: 100vh !important;
+  height: auto !important;
+  position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  padding: 28px 18px 42px !important;
+  box-sizing: border-box !important;
+  overflow: auto !important;
+  isolation: isolate !important;
+  background:
+    radial-gradient(circle at 50% 7%, rgba(85,191,240,.22), transparent 28%),
+    radial-gradient(circle at 8% 78%, rgba(25,118,210,.14), transparent 30%),
+    radial-gradient(circle at 92% 22%, rgba(215,168,61,.10), transparent 24%),
+    linear-gradient(145deg, #030a13 0%, #07192d 48%, #0b3152 100%) !important;
+}
+
+.auth::before,
+.auth::after {
+  display: none !important;
+}
+
+/* Subtle atmospheric light behind the login. */
+.auth {
+  --login-glow: rgba(85,191,240,.15);
+}
+
+.auth .card {
+  position: relative !important;
+  z-index: 20 !important;
+  width: min(520px, 94vw) !important;
+  margin: 0 !important;
+  padding: 30px 32px 28px !important;
+  border: 1px solid rgba(255,255,255,.72) !important;
+  border-radius: 24px !important;
+  background: linear-gradient(145deg, rgba(255,255,255,.985), rgba(244,249,255,.965)) !important;
+  box-shadow:
+    0 28px 70px rgba(0,0,0,.30),
+    0 0 0 1px rgba(85,191,240,.08),
+    0 0 42px rgba(85,191,240,.08) !important;
+  backdrop-filter: blur(18px) !important;
+}
+
+.auth .card::before {
+  content: "";
+  display: block;
+  height: 4px;
+  width: 76px;
+  margin: -2px 0 18px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #1675d1, #55bff0);
+  box-shadow: 0 4px 14px rgba(22,117,209,.22);
+}
+
+.auth .card h1 {
+  margin: 0 0 14px !important;
+  color: #102b4d !important;
+  font-size: 29px !important;
+  font-weight: 900 !important;
+  letter-spacing: -.025em !important;
+}
+
+.auth .card h1:after {
+  display: none !important;
+}
+
+.auth .card input,
+.auth .card select {
+  min-height: 50px !important;
+  margin: 7px 0 !important;
+  border: 1px solid #d3dfeb !important;
+  border-radius: 13px !important;
+  background: rgba(248,251,255,.92) !important;
+  color: #142942 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7) !important;
+}
+
+.auth .card input:focus,
+.auth .card select:focus {
+  border-color: #55bff0 !important;
+  background: #fff !important;
+  box-shadow: 0 0 0 4px rgba(85,191,240,.12), 0 5px 16px rgba(20,65,105,.06) !important;
+}
+
+.auth .card > button[type="submit"] {
+  width: 100% !important;
+  min-height: 52px !important;
+  margin-top: 12px !important;
+  border: 0 !important;
+  border-radius: 13px !important;
+  background: linear-gradient(135deg, #1976d2 0%, #1259ad 55%, #0e4b91 100%) !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  letter-spacing: .09em !important;
+  box-shadow: 0 12px 25px rgba(18,89,173,.25) !important;
+}
+
+.auth .card > button[type="submit"]:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 15px 30px rgba(18,89,173,.32) !important;
+}
+
+.auth .card .link {
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: #27547f !important;
+  font-weight: 800 !important;
+}
+
+.auth .card .link:hover {
+  color: #1261b4 !important;
+  background: #edf6fd !important;
+}
+
+.auth .card .msg {
+  margin-top: 12px !important;
+}
+
+/* Small identity line below the card, kept purely visual and non-interactive. */
+.auth::selection {
+  background: rgba(85,191,240,.28);
+}
+
+@media (max-width: 700px) {
+  .auth {
+    justify-content: flex-start !important;
+    padding: 18px 12px 28px !important;
+  }
+
+  .login-brand-static {
+    min-height: 126px !important;
+    padding-top: 0 !important;
+    gap: 10px !important;
+    margin-bottom: 8px !important;
+  }
+
+  .login-brand-static img {
+    width: min(150px, 42vw) !important;
+    height: min(150px, 42vw) !important;
+  }
+
+  .auth .card {
+    width: min(520px, 96vw) !important;
+    padding: 24px 20px 22px !important;
+    border-radius: 20px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  .login-brand-static {
+    min-height: 112px !important;
+    gap: 6px !important;
+  }
+
+  .login-brand-static img {
+    width: 128px !important;
+    height: 128px !important;
+  }
+
+  .auth .card {
+    padding: 21px 16px !important;
+  }
+}
