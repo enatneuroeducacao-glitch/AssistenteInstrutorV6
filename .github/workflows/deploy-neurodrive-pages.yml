@@ -54,6 +54,9 @@ jobs:
       - name: Prepare voluntary support page
         run: python scripts/prepare-neurodrive-pages.py
 
+      - name: Normalize financial dashboard
+        run: python scripts/normalize-financial-dashboard.py
+
       - name: Build Vite application
         run: npm run build
 
