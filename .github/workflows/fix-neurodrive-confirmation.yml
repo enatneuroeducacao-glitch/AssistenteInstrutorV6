@@ -19,21 +19,17 @@ jobs:
         run: |
           python - <<'PY'
           from pathlib import Path
-          import re
           p = Path('src/main.jsx')
           s = p.read_text(encoding='utf-8')
           original = s
-
           s = s.replace('function Auth({ onAuth }) {', 'function Auth({ onAuth, initialMessage = "" }) {', 1)
           s = s.replace('const [msg, setMsg] = useState("");\n  const [busy, setBusy] = useState(false);', 'const [msg, setMsg] = useState(initialMessage);\n  const [busy, setBusy] = useState(false);', 1)
-          s = s.replace('options: {\n              data: professionalMetadata\n            }', 'options: {\n              emailRedirectTo: "https://neurodrive.hsi-doth-p.com.br/?confirmed=1",\n              data: professionalMetadata\n            }', 1)
-          if 'emailRedirectTo:' not in s:
+          s = s.replace('options: {\n              data: professionalMetadata\n            }', 'options: {\n              emailRedirectTo: "https://neurodrive.hsi-doth-pg.com.br/?confirmed=1",\n              data: professionalMetadata\n            }', 1)
+          if 'emailRedirectTo: "https://neurodrive.hsi-doth-pg.com.br/?confirmed=1"' not in s:
               raise SystemExit('emailRedirectTo patch failed')
-
           marker = 'function Root() {'
           start = s.index(marker)
           end = s.index('\n\nconst rootElement', start)
-          old = s[start:end]
           new = '''function Root() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -43,7 +39,6 @@ jobs:
   useEffect(() => {
     let mounted = true;
     if (!supabase) { setConfigError("Supabase não configurado. Verifique VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env."); setLoading(false); return; }
-
     async function initializeAuth() {
       try {
         const { data, error } = await supabase.auth.getSession();
@@ -62,7 +57,6 @@ jobs:
         if (mounted) { setUser(null); setLoading(false); }
       }
     }
-
     initializeAuth();
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (mounted && !confirmationRequested) {
