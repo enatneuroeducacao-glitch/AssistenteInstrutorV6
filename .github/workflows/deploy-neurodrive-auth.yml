@@ -1,0 +1,85 @@
+name: Deploy NeuroDrive Auth Fix
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "neurodrive-pages"
+  cancel-in-progress: true
+
+env:
+  VITE_SUPABASE_URL: https://gicjsuagmiyoqvttbqjw.supabase.co
+  VITE_SUPABASE_ANON_KEY: sb_publishable_ovAAaIT0nXzSMiy2KYGHTw_ydsshEzK
+  VITE_BASE_PATH: /
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Patch NeuroDrive authentication for production
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import base64
+          p = Path("src/main.jsx")
+          s = p.read_text(encoding="utf-8")
+          s = s.replace('function Auth({ onAuth }) {', 'function Auth({ onAuth, initialMessage = "" }) {', 1)
+          s = s.replace('const [msg, setMsg] = useState("");', 'const [msg, setMsg] = useState(initialMessage);', 1)
+          s = s.replace('options: {\n              data: professionalMetadata\n            }', 'options: {\n              emailRedirectTo: "https://neurodrive.hsi-doth-pg.com.br/?confirmed=1",\n              data: professionalMetadata\n            }', 1)
+          root = base64.b64decode("ZnVuY3Rpb24gUm9vdCgpIHsKICBjb25zdCBbdXNlciwgc2V0VXNlcl0gPSB1c2VTdGF0ZShudWxsKTsKICBjb25zdCBbbG9hZGluZywgc2V0TG9hZGluZ10gPSB1c2VTdGF0ZSh0cnVlKTsKICBjb25zdCBbY29uZmlnRXJyb3IsIHNldENvbmZpZ0Vycm9yXSA9IHVzZVN0YXRlKCIiKTsKICBjb25zdCBjb25maXJtYXRpb25SZXF1ZXN0ZWQgPSBuZXcgVVJMU2VhcmNoUGFyYW1zKHdpbmRvdy5sb2NhdGlvbi5zZWFyY2gpLmdldCgiY29uZmlybWVkIikgPT09ICIxIjsKCiAgdXNlRWZmZWN0KCgpID0+IHsKICAgIGxldCBtb3VudGVkID0gdHJ1ZTsKICAgIGlmICghc3VwYWJhc2UpIHsgc2V0Q29uZmlnRXJyb3IoIlN1cGFiYXNlIG7Do28gY29uZmlndXJhZG8uIFZlcmlmaXF1ZSBWSVRFX1NVUEFCQVNFX1VSTCBlIFZJVEVfU1VQQUJBU0VfQU5PTl9LRVkgbm8gLmVudi4iKTsgc2V0TG9hZGluZyhmYWxzZSk7IHJldHVybjsgfQoKICAgIGFzeW5jIGZ1bmN0aW9uIGluaXRpYWxpemVBdXRoKCkgewogICAgICB0cnkgewogICAgICAgIGNvbnN0IHsgZGF0YSwgZXJyb3IgfSA9IGF3YWl0IHN1cGFiYXNlLmF1dGguZ2V0U2Vzc2lvbigpOwogICAgICAgIGlmICghbW91bnRlZCkgcmV0dXJuOwogICAgICAgIGlmIChlcnJvcikgY29uc29sZS5lcnJvcigiRXJybyBhbyByZWN1cGVyYXIgc2Vzc8OjbzoiLCBlcnJvcik7CiAgICAgICAgaWYgKGNvbmZpcm1hdGlvblJlcXVlc3RlZCkgewogICAgICAgICAgYXdhaXQgc3VwYWJhc2UuYXV0aC5zaWduT3V0KCk7CiAgICAgICAgICB3aW5kb3cuaGlzdG9yeS5yZXBsYWNlU3RhdGUoe30sIGRvY3VtZW50LnRpdGxlLCB3aW5kb3cubG9jYXRpb24ucGF0aG5hbWUpOwogICAgICAgICAgc2V0VXNlcihudWxsKTsKICAgICAgICB9IGVsc2UgewogICAgICAgICAgc2V0VXNlcihkYXRhPy5zZXNzaW9uPy51c2VyID8/IG51bGwpOwogICAgICAgIH0KICAgICAgICBzZXRMb2FkaW5nKGZhbHNlKTsKICAgICAgfSBjYXRjaCAoZXJyb3IpIHsKICAgICAgICBjb25zb2xlLmVycm9yKCJFcnJvIFN1cGFiYXNlOiIsIGVycm9yKTsKICAgICAgICBpZiAobW91bnRlZCkgeyBzZXRVc2VyKG51bGwpOyBzZXRMb2FkaW5nKGZhbHNlKTsgfQogICAgICB9CiAgICB9CgogICAgaW5pdGlhbGl6ZUF1dGgoKTsKICAgIGNvbnN0IHsgZGF0YTogeyBzdWJzY3JpcHRpb24gfSB9ID0gc3VwYWJhc2UuYXV0aC5vbkF1dGhTdGF0ZUNoYW5nZSgoX2V2ZW50LCBzZXNzaW9uKSA9PiB7CiAgICAgIGlmIChtb3VudGVkICYmICFjb25maXJtYXRpb25SZXF1ZXN0ZWQpIHsKICAgICAgICBzZXRVc2VyKHNlc3Npb24/LnVzZXIgPz8gbnVsbCk7CiAgICAgICAgc2V0TG9hZGluZyhmYWxzZSk7CiAgICAgIH0KICAgIH0pOwogICAgcmV0dXJuICgpID0+IHsgbW91bnRlZCA9IGZhbHNlOyBzdWJzY3JpcHRpb24/LnVuc3Vic2NyaWJlKCk7IH07CiAgfSwgW10pOwoKICBhc3luYyBmdW5jdGlvbiBsb2dvdXQoKSB7IGlmIChzdXBhYmFzZSkgYXdhaXQgc3VwYWJhc2UuYXV0aC5zaWduT3V0KCk7IHNldFVzZXIobnVsbCk7IH0KICBpZiAobG9hZGluZykgcmV0dXJuIDxkaXYgY2xhc3NOYW1lPSJhdXRoIj48ZGl2IGNsYXNzTmFtZT0iY2FyZCI+PGgxPkVOQVQgLSBBc3Npc3RlbnRlIGRvIEluc3RydXRvcjwvaDE+PHA+VmVyaWZpY2FuZG8gYWNlc3NvLi4uPC9wPjwvZGl2PjwvZGl2PjsKICBpZiAoY29uZmlnRXJyb3IpIHJldHVybiA8ZGl2IGNsYXNzTmFtZT0iYXV0aCI+PGRpdiBjbGFzc05hbWU9ImNhcmQiPjxoMT5Db25maWd1cmHDp8OjbyBuZWNlc3PDoXJpYTwvaDE+PHAgY2xhc3NOYW1lPSJtc2ciPntjb25maWdFcnJvcn08L3A+PC9kaXY+PC9kaXY+OwogIHJldHVybiB1c2VyID8gPERhc2hib2FyZCB1c2VyPXt1c2VyfSBvbkxvZ291dD17bG9nb3V0fSAvPiA6IDxBdXRoIG9uQXV0aD17c2V0VXNlcn0gaW5pdGlhbE1lc3NhZ2U9e2NvbmZpcm1hdGlvblJlcXVlc3RlZCA/ICJFLW1haWwgY29uZmlybWFkbyBjb20gc3VjZXNzby4gU2V1IGNhZGFzdHJvIGVzdMOhIGF0aXZvLiBGYcOnYSBsb2dpbiBwYXJhIGVudHJhciBubyBOZXVyb0RyaXZlLiIgOiAiIn0gLz47Cn0=").decode()
+          start = s.index("function Root() {")
+          end = s.index("\n\nconst rootElement", start)
+          s = s[:start] + root + s[end:]
+          p.write_text(s, encoding="utf-8")
+          PY
+      - name: Open core access policy for Pages build
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("src/main.jsx")
+          s = p.read_text(encoding="utf-8")
+          old = 'const protectedTabs = new Set(["alunos", "agenda", "aulas", "hsi", "rpa", "financeiro"]);'
+          if old in s:
+              s = s.replace(old, 'const protectedTabs = new Set([]);', 1)
+          p.write_text(s, encoding="utf-8")
+          PY
+      - name: Prepare voluntary support page
+        run: python scripts/prepare-neurodrive-pages.py
+      - name: Normalize financial dashboard
+        run: python scripts/normalize-financial-dashboard.py
+      - name: Build Vite application
+        run: npm run build
+      - name: Enable SPA route fallback
+        run: cp dist/index.html dist/404.html
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+        id: deployment
