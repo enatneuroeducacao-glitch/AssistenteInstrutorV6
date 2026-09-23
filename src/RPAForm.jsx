@@ -166,149 +166,147 @@ export default function RPAForm({ user, onBack }) {
     return <div className="panel"><h1>RPA ÚNICO</h1><p>Carregando dados do RPA...</p></div>;
   }
 
+  const card = {
+    border: "1px solid #dce5ef",
+    borderRadius: "12px",
+    background: "#fff",
+    padding: "14px 16px"
+  };
+  const muted = { color: "#60738d", fontSize: "12px" };
+  const metric = { ...card, padding: "11px 13px" };
+
   return (
     <div className="app">
       <main>
-        <header>
+        <header style={{ marginBottom: "10px" }}>
           <div>
-            <h1>RPA ÚNICO</h1>
-            <small>Relatório Psicométrico de Aulas — acompanhamento desde a 1ª aula</small>
+            <small style={{ color: "#5b7696", fontWeight: 800, letterSpacing: ".06em" }}>RPA / ACOMPANHAMENTO</small>
+            <h1 style={{ margin: "3px 0" }}>RPA Único</h1>
+            <small>Relatório Psicométrico de Aulas — evolução do aluno desde a 1ª aula</small>
           </div>
-          <button type="button" onClick={onBack}>VOLTAR</button>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <button type="button" onClick={loadRpa}>↻ ATUALIZAR</button>
+            <button type="button" onClick={onBack}>VOLTAR</button>
+          </div>
         </header>
 
-        <section className="panel">
-          <h2>1. Seleção do aluno</h2>
-          <p>O RPA é criado automaticamente quando a primeira aula é iniciada. Essa primeira aula funciona como linha de base para alimentar a evolução.</p>
-          <label>Aluno
-            <select value={selectedStudentId} onChange={(e) => changeStudent(e.target.value)}>
+        <section style={{ ...card, marginBottom: "10px", display: "flex", gap: "14px", alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ flex: "1 1 320px" }}>
+            <small style={muted}>ALUNO</small>
+            <select style={{ marginTop: "5px" }} value={selectedStudentId} onChange={(e) => changeStudent(e.target.value)}>
               <option value="">Selecione o aluno</option>
               {students.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.full_name}{item.category ? ` — CNH ${item.category}` : ""}
-                </option>
+                <option key={item.id} value={item.id}>{item.full_name}{item.category ? ` — CNH ${item.category}` : ""}</option>
               ))}
             </select>
-          </label>
+          </div>
+          {student && (
+            <div style={{ ...metric, minWidth: "150px" }}>
+              <small style={muted}>STATUS RPA</small>
+              <strong style={{ display: "block", marginTop: "4px" }}>{report?.status || "NÃO INICIADO"}</strong>
+            </div>
+          )}
+          {student && report && (
+            <div style={{ ...metric, minWidth: "130px" }}>
+              <small style={muted}>HSI-DOTH-P</small>
+              <strong style={{ display: "block", marginTop: "4px" }}>{report.latest_hsi_score != null ? `${Number(report.latest_hsi_score).toFixed(1)} / 100` : "—"}</strong>
+            </div>
+          )}
         </section>
 
         {!student && (
-          <section className="panel">
-            <h2>Nenhum aluno cadastrado</h2>
-            <p>Cadastre um aluno e inicie a primeira aula para começar a alimentar o RPA.</p>
+          <section style={{ ...card }}>
+            <strong>Nenhum aluno selecionado</strong>
+            <p style={{ ...muted, marginBottom: 0 }}>Cadastre um aluno e inicie a primeira aula para começar a alimentar o RPA.</p>
           </section>
         )}
 
         {student && (
           <>
-            <section className="panel">
-              <h2>2. Linha de base da 1ª aula</h2>
-              {!report ? (
-                <div style={{ padding: "14px", border: "1px solid #ffe082", borderRadius: "10px", background: "#fff8e1" }}>
-                  <strong>RPA ainda não iniciado.</strong>
-                  <p style={{ marginBottom: 0 }}>Inicie a primeira aula de {student.full_name} para criar automaticamente o RPA.</p>
-                </div>
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "10px" }}>
-                  <div><small>STATUS</small><strong style={{ display: "block" }}>{report.status || "EM FORMAÇÃO"}</strong></div>
-                  <div><small>AULAS</small><strong style={{ display: "block" }}>{report.total_lessons || 0}</strong></div>
-                  <div><small>HSI-DOTH-P</small><strong style={{ display: "block" }}>{report.latest_hsi_score != null ? `${Number(report.latest_hsi_score).toFixed(1)} / 100` : "—"}</strong></div>
-                  <div><small>CNH</small><strong style={{ display: "block" }}>{report.baseline_cnh_category || student.category || "—"}</strong></div>
-                  <div><small>INÍCIO DA LINHA DE BASE</small><strong style={{ display: "block" }}>{formatDate(report.baseline_at)}</strong></div>
-                </div>
-              )}
-
-              {report && (
-                <div style={{ marginTop: "14px", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "12px" }}>
-                  <div style={{ padding: "12px", border: "1px solid #dfe5ec", borderRadius: "10px" }}>
-                    <strong>KM inicial da 1ª aula</strong>
-                    <div style={{ marginTop: "6px" }}>{report.baseline_km_start ?? "—"}</div>
+            {!report ? (
+              <section style={{ ...card, marginBottom: "10px", background: "#fffaf0", borderColor: "#f2d38b" }}>
+                <strong>RPA ainda não iniciado</strong>
+                <p style={{ ...muted, marginBottom: 0 }}>Inicie a primeira aula de {student.full_name} para criar automaticamente a linha de base.</p>
+              </section>
+            ) : (
+              <>
+                <section style={{ marginBottom: "10px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "8px" }}>
+                    <div style={metric}><small style={muted}>AULAS</small><strong style={{ display: "block", fontSize: "19px", marginTop: "3px" }}>{lessons.length}</strong></div>
+                    <div style={metric}><small style={muted}>ÚLTIMA AULA</small><strong style={{ display: "block", fontSize: "19px", marginTop: "3px" }}>{latestLesson?.lesson_number || "—"}</strong></div>
+                    <div style={metric}><small style={muted}>QUALIDADE</small><strong style={{ display: "block", fontSize: "19px", marginTop: "3px" }}>{report.latest_quality_score != null ? `${Number(report.latest_quality_score).toFixed(1)}%` : "—"}</strong></div>
+                    <div style={metric}><small style={muted}>MÉDIA ANDRAGÓGICA</small><strong style={{ display: "block", fontSize: "19px", marginTop: "3px" }}>{report.latest_average != null ? `${Number(report.latest_average).toFixed(2)}/5` : "—"}</strong></div>
                   </div>
-                  <div style={{ padding: "12px", border: "1px solid #dfe5ec", borderRadius: "10px" }}>
-                    <strong>Objetivo inicial</strong>
-                    <div style={{ marginTop: "6px" }}>{report.baseline_objective || "—"}</div>
+                </section>
+
+                <section style={{ ...card, marginBottom: "10px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+                    <div>
+                      <small style={{ color: "#5b7696", fontWeight: 800 }}>LINHA DE BASE</small>
+                      <h2 style={{ margin: "3px 0", fontSize: "18px" }}>1ª aula</h2>
+                    </div>
+                    <span style={{ ...muted }}>Início: {formatDate(report.baseline_at)}</span>
                   </div>
-                </div>
-              )}
-            </section>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "8px" }}>
+                    <div style={metric}><small style={muted}>CNH</small><strong style={{ display: "block", marginTop: "3px" }}>{report.baseline_cnh_category || student.category || "—"}</strong></div>
+                    <div style={metric}><small style={muted}>KM INICIAL</small><strong style={{ display: "block", marginTop: "3px" }}>{report.baseline_km_start ?? "—"}</strong></div>
+                    <div style={metric}><small style={muted}>OBJETIVO</small><strong style={{ display: "block", marginTop: "3px" }}>{report.baseline_objective || "—"}</strong></div>
+                  </div>
+                </section>
 
-            <section className="panel">
-              <h2>3. Evolução das aulas</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "10px" }}>
-                <div><small>TOTAL DE AULAS</small><strong style={{ display: "block", fontSize: "20px" }}>{lessons.length}</strong></div>
-                <div><small>ÚLTIMA AULA</small><strong style={{ display: "block", fontSize: "20px" }}>{latestLesson?.lesson_number || "—"}</strong></div>
-                <div><small>QUALIDADE</small><strong style={{ display: "block", fontSize: "20px" }}>{report?.latest_quality_score != null ? `${Number(report.latest_quality_score).toFixed(1)}%` : "—"}</strong></div>
-                <div><small>MÉDIA ANDRAGÓGICA</small><strong style={{ display: "block", fontSize: "20px" }}>{report?.latest_average != null ? `${Number(report.latest_average).toFixed(2)}/5` : "—"}</strong></div>
-              </div>
+                <section style={{ ...card, marginBottom: "10px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                    <div>
+                      <small style={{ color: "#5b7696", fontWeight: 800 }}>EVOLUÇÃO</small>
+                      <h2 style={{ margin: "3px 0", fontSize: "18px" }}>Histórico das aulas</h2>
+                    </div>
+                    <span style={muted}>{lessons.length} registro(s)</span>
+                  </div>
+                  {lessons.length ? (
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                        <thead><tr><th style={{ textAlign: "left", padding: "7px" }}>Aula</th><th style={{ textAlign: "left", padding: "7px" }}>Data</th><th style={{ textAlign: "left", padding: "7px" }}>CNH</th><th style={{ textAlign: "left", padding: "7px" }}>KM</th><th style={{ textAlign: "left", padding: "7px" }}>Status</th></tr></thead>
+                        <tbody>{lessons.map((item) => (
+                          <tr key={item.id}>
+                            <td style={{ padding: "7px", borderTop: "1px solid #edf0f4" }}>{item.lesson_number || "—"}</td>
+                            <td style={{ padding: "7px", borderTop: "1px solid #edf0f4" }}>{formatDate(item.started_at)}</td>
+                            <td style={{ padding: "7px", borderTop: "1px solid #edf0f4" }}>{item.cnh_category || student.category || "—"}</td>
+                            <td style={{ padding: "7px", borderTop: "1px solid #edf0f4" }}>{item.km_start ?? "—"}{item.km_end != null ? ` → ${item.km_end}` : ""}</td>
+                            <td style={{ padding: "7px", borderTop: "1px solid #edf0f4" }}>{item.status}</td>
+                          </tr>
+                        ))}</tbody>
+                      </table>
+                    </div>
+                  ) : <p style={muted}>Nenhuma aula registrada.</p>}
+                </section>
 
-              {lessons.length > 0 && (
-                <div style={{ marginTop: "14px", overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
-                    <thead><tr><th style={{ textAlign: "left", padding: "8px" }}>Aula</th><th style={{ textAlign: "left", padding: "8px" }}>Data</th><th style={{ textAlign: "left", padding: "8px" }}>CNH</th><th style={{ textAlign: "left", padding: "8px" }}>KM</th><th style={{ textAlign: "left", padding: "8px" }}>Status</th></tr></thead>
-                    <tbody>
-                      {lessons.map((item) => (
-                        <tr key={item.id}>
-                          <td style={{ padding: "8px", borderTop: "1px solid #edf0f4" }}>{item.lesson_number || "—"}</td>
-                          <td style={{ padding: "8px", borderTop: "1px solid #edf0f4" }}>{formatDate(item.started_at)}</td>
-                          <td style={{ padding: "8px", borderTop: "1px solid #edf0f4" }}>{item.cnh_category || student.category || "—"}</td>
-                          <td style={{ padding: "8px", borderTop: "1px solid #edf0f4" }}>{item.km_start ?? "—"}{item.km_end != null ? ` → ${item.km_end}` : ""}</td>
-                          <td style={{ padding: "8px", borderTop: "1px solid #edf0f4" }}>{item.status}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-
-            <section className="panel">
-              <h2>4. Registro complementar do RPA</h2>
-              <label>Síntese / observações consolidadas
-                <textarea rows="5" value={synthesis} onChange={(e) => setSynthesis(e.target.value)} placeholder="O sistema já alimenta automaticamente o RPA com os dados das aulas. Use este campo para complementar a síntese." />
-              </label>
-             <div style={{
-  marginTop: "10px",
-  width: "100%"
-}}>
-  <label style={{
-    display: "block",
-    marginBottom: "7px",
-    fontWeight: 700,
-    color: "#18345f"
-  }}>
-    Plano de continuidade
-  </label>
-
-  <div style={{
-    minHeight: "118px",
-    padding: "14px 16px",
-    border: "1px solid #d8e4f4",
-    borderRadius: "10px",
-    background: "#f7faff",
-    color: "#243b5a",
-    fontSize: "13px",
-    lineHeight: 1.6,
-    whiteSpace: "pre-wrap",
-    boxSizing: "border-box"
-  }}>
-    {continuityPlan || "Plano de continuidade ainda não gerado."}
-  </div>
-</div>
-
-              {report?.latest_evaluation && (
-                <div style={{ padding: "12px", border: "1px solid #dfe5ec", borderRadius: "10px", background: "#fbfcfe" }}>
-                  <strong>Última avaliação andragógica</strong>
-                  <p style={{ marginBottom: 0 }}>{report.latest_evaluation.classification?.label || "Avaliação registrada"} — média {report.latest_average ?? "—"}/5.</p>
-                </div>
-              )}
-
-              <div style={{ marginTop: "14px", display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                <button type="button" onClick={saveRpaNotes} disabled={saving || !report}>{saving ? "SALVANDO..." : "ATUALIZAR RPA"}</button>
-                <button type="button" onClick={printRpa}>IMPRIMIR / GERAR PDF</button>
-                <button type="button" onClick={loadRpa}>ATUALIZAR DADOS</button>
-              </div>
-              {msg && <p className="msg" style={{ marginTop: "12px" }}>{msg}</p>}
-            </section>
+                <section style={{ ...card, marginBottom: "10px" }}>
+                  <div style={{ marginBottom: "10px" }}>
+                    <small style={{ color: "#5b7696", fontWeight: 800 }}>ANÁLISE</small>
+                    <h2 style={{ margin: "3px 0", fontSize: "18px" }}>Síntese e continuidade</h2>
+                  </div>
+                  {report.latest_evaluation && (
+                    <div style={{ ...metric, marginBottom: "9px" }}>
+                      <strong>Última avaliação</strong>
+                      <span style={{ ...muted, marginLeft: "8px" }}>{report.latest_evaluation.classification?.label || "Avaliação registrada"} — média {report.latest_average ?? "—"}/5</span>
+                    </div>
+                  )}
+                  <label>Síntese / observações
+                    <textarea rows="4" value={synthesis} onChange={(e) => setSynthesis(e.target.value)} placeholder="Complemento da síntese do acompanhamento." />
+                  </label>
+                  <label style={{ marginTop: "9px" }}>Plano de continuidade
+                    <div style={{ minHeight: "80px", marginTop: "5px", padding: "11px 13px", border: "1px solid #d8e4f4", borderRadius: "10px", background: "#f7faff", color: "#243b5a", fontSize: "13px", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+                      {continuityPlan || "Plano de continuidade ainda não gerado."}
+                    </div>
+                  </label>
+                  <div style={{ marginTop: "11px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    <button type="button" onClick={saveRpaNotes} disabled={saving || !report}>{saving ? "SALVANDO..." : "SALVAR RPA"}</button>
+                    <button type="button" onClick={printRpa}>IMPRIMIR / PDF</button>
+                  </div>
+                  {msg && <p className="msg" style={{ marginTop: "9px" }}>{msg}</p>}
+                </section>
+              </>
+            )}
           </>
         )}
       </main>
