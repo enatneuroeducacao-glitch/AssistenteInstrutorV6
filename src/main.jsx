@@ -5462,8 +5462,13 @@ if (tab === "aulas" && activeLesson) {
         setActiveLesson(null);
         setTab("aulas");
       }}
-      onCompleted={() => {        setActiveLesson(null);
-        setTab("aulas");      }}
+      onCompleted={() => {
+        setActiveLesson(null);
+        setTab("aulas");
+        // Após a conclusão, força uma releitura dos dados para refletir
+        // imediatamente o encerramento sem recarregar a página.
+        window.dispatchEvent(new Event("enat:refresh"));
+      }}
     />
   );
 }
