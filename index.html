@@ -7,8 +7,6 @@
   <link rel="icon" type="image/png" href="/enat-logo.png?v=7" />
   <link rel="shortcut icon" type="image/png" href="/enat-logo.png?v=7" />
   <link rel="apple-touch-icon" href="/enat-logo.png?v=7" />
-  <link rel="stylesheet" href="./neurodrive-theme-v1.css?v=7" />
-  <link rel="stylesheet" href="./neurodrive-login-fix.css?v=4" />
 </head>
 <body>
   <div class="login-brand-static" aria-label="Identidade ENAT">
@@ -19,8 +17,13 @@
     if (window.location.pathname === "/admin-access") {
       import("./src/admin.jsx");
     } else {
-      import("./src/main.jsx");
-      import("./src/PredictiveAIOverlay.jsx");
+      import("./src/main.jsx").catch((error) => {
+        console.error("Erro ao carregar o NeuroDrive:", error);
+        const root = document.getElementById("root");
+        if (root) {
+          root.innerHTML = `<div style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#f4f7fb;font-family:Arial,sans-serif;color:#17345f"><div style="max-width:720px;background:#fff;border:1px solid #dfe7f0;border-radius:16px;padding:28px;box-shadow:0 14px 35px rgba(8,28,53,.12)"><h1 style="margin-top:0">NeuroDrive — carregamento interrompido</h1><p>O aplicativo encontrou um erro ao carregar. Recarregue a página. Se o problema persistir, esta mensagem permite identificar o erro sem deixar a tela azul.</p><pre style="white-space:pre-wrap;background:#f6f8fb;padding:12px;border-radius:8px;overflow:auto">${String(error?.message || error)}</pre><button onclick="location.reload()" style="margin-top:12px;padding:11px 16px;border:0;border-radius:8px;background:#1675d1;color:#fff;font-weight:800;cursor:pointer">RECARREGAR</button></div></div>`;
+        }
+      });
     }
   </script>
 </body>
