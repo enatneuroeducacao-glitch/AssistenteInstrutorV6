@@ -4852,7 +4852,16 @@ Documento gerado pelo ENAT — Assistente do Instrutor.
       }
     }
 
-    const handleRefresh = () => refreshOperationalData();
+    const handleRefresh = async () => {
+      await refreshOperationalData();
+      if (!supabase || !user?.id) return;
+      const [{ data: financeData }, { data: accountsData }] = await Promise.all([
+        supabase.from("ai_finance").select("*").eq("user_id", user.id).order("entry_date", { ascending: false }),
+        supabase.from("ai_finance_accounts").select("id, user_id, bank_name, account_name, account_type, agency, account_number, initial_balance, status, created_at").eq("user_id", user.id).order("account_name", { ascending: true })
+      ]);
+      if (financeData) setFinanceEntries(financeData);
+      if (accountsData) setFinanceAccounts(accountsData);
+    };
     window.addEventListener("enat:refresh", handleRefresh);
 
     return () => {
@@ -5202,916 +5211,83 @@ if (tab === "rpa") {
     }
     if (tab === "perfil") return <ProfileForm user={user} />;
 if (tab === "financeiro") {
-
-  const financeRevenue = financeEntries
-    .filter(entry => String(entry.type || "").toUpperCase() === "RECEITA")
-    .reduce((total, entry) => total + Number(entry.amount || 0), 0);
-
-  const financeExpenses = financeEntries
-    .filter(entry => String(entry.type || "").toUpperCase() === "DESPESA")
-    .reduce((total, entry) => total + Number(entry.amount || 0), 0);
-
+  const financeRevenue = financeEntries.filter(e => String(e.type || "").toUpperCase() === "RECEITA").reduce((t,e) => t + Number(e.amount || 0), 0);
+  const financeExpenses = financeEntries.filter(e => String(e.type || "").toUpperCase() === "DESPESA").reduce((t,e) => t + Number(e.amount || 0), 0);
+  const financePending = financeEntries.filter(e => String(e.status || "").toUpperCase() === "PENDENTE").reduce((t,e) => t + Number(e.amount || 0), 0);
   const financeResult = financeRevenue - financeExpenses;
-
-  const formatCurrency = (value) =>
-    Number(value || 0).toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL"
-    });
+  const initialBalances = financeAccounts.reduce((t,a) => t + Number(a.initial_balance || 0), 0);
+  const registeredBalance = initialBalances + financeResult;
+  const formatCurrency = value => Number(value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const card = { background: "#fff", border: "1px solid #dce6f2", borderRadius: "14px", padding: "16px", marginBottom: "12px" };
+  const mini = { background: "#f7faff", border: "1px solid #e1eaf4", borderRadius: "10px", padding: "12px" };
+  const grid2 = { display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: "10px" };
 
   async function saveFinanceEntry(event) {
     event.preventDefault();
-
-    if (!supabase || !user?.id) {
-      alert("Usuário não autenticado.");
-      return;
-    }
-
-    const amount = Number(
-      String(financeForm.amount || "")
-        .replace(/\./g, "")
-        .replace(",", ".")
-    );
-
-    if (!financeForm.entry_date) {
-      alert("Informe a data.");
-      return;
-    }
-
-    if (!financeForm.category.trim()) {
-      alert("Informe a categoria.");
-      return;
-    }
-
-    if (!amount || amount <= 0) {
-      alert("Informe um valor válido.");
-      return;
-    }
-
-    const payload = {
-      user_id: user.id,
-      entry_date: financeForm.entry_date,
-      type: financeForm.type,
-      category: financeForm.category.trim(),
-      description: financeForm.description.trim() || null,
-      amount,
-      payment_method: financeForm.payment_method || null,
-      person_type: financeForm.person_type || "PF",
-      document: financeForm.document.trim() || null,
-      counterparty_name: financeForm.counterparty_name.trim() || null,
-      account_id: financeForm.account_id || null,
-      status: financeForm.status
-    };
-
-    const { data, error } = await supabase
-      .from("ai_finance")
-      .insert(payload)
-      .select("id, user_id, student_id, lesson_id, entry_date, type, category, description, amount, payment_method, person_type, document, counterparty_name, account_id, status, created_at")
-      .single();
-
-    if (error) {
-      console.error("Erro ao salvar lançamento financeiro:", error);
-      alert("Não foi possível salvar o lançamento: " + error.message);
-      return;
-    }
-
+    if (!supabase || !user?.id) return alert("Usuário não autenticado.");
+    const amount = Number(String(financeForm.amount || "").replace(/\./g, "").replace(",", "."));
+    if (!financeForm.entry_date) return alert("Informe a data.");
+    if (!financeForm.category.trim()) return alert("Informe a categoria.");
+    if (!amount || amount <= 0) return alert("Informe um valor válido.");
+    const payload = { user_id:user.id, entry_date:financeForm.entry_date, type:financeForm.type, category:financeForm.category.trim(), description:financeForm.description.trim() || null, amount, payment_method:financeForm.payment_method || null, person_type:financeForm.person_type || "PF", document:financeForm.document.trim() || null, counterparty_name:financeForm.counterparty_name.trim() || null, account_id:financeForm.account_id || null, status:financeForm.status };
+    const { data, error } = await supabase.from("ai_finance").insert(payload).select("*").single();
+    if (error) return alert("Não foi possível salvar o lançamento: " + error.message);
     setFinanceEntries(prev => [data, ...prev]);
-
-    setFinanceForm({
-      type: "RECEITA",
-      entry_date: new Date().toISOString().slice(0, 10),
-      category: "",
-      description: "",
-      amount: "",
-      payment_method: "",
-      person_type: "PF",
-      document: "",
-      counterparty_name: "",
-      status: "PAGO"
-    });
-
+    setFinanceForm({ type:"RECEITA", entry_date:new Date().toISOString().slice(0,10), category:"", description:"", amount:"", payment_method:"", account_id:"", person_type:"PF", document:"", counterparty_name:"", status:"PAGO" });
     setShowFinanceForm(false);
   }
-
   async function deleteFinanceEntry(id) {
-    if (!supabase || !id) return;
-
-    const confirmed = window.confirm(
-      "Deseja realmente excluir este lançamento?"
-    );
-
-    if (!confirmed) return;
-
-    const { error } = await supabase
-      .from("ai_finance")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", user.id);
-
-    if (error) {
-      console.error("Erro ao excluir lançamento:", error);
-      alert("Não foi possível excluir o lançamento: " + error.message);
-      return;
-    }
-
-    setFinanceEntries(prev =>
-      prev.filter(entry => entry.id !== id)
-    );
+    if (!supabase || !id || !window.confirm("Deseja realmente excluir este lançamento?")) return;
+    const { error } = await supabase.from("ai_finance").delete().eq("id",id).eq("user_id",user.id);
+    if (error) return alert("Não foi possível excluir o lançamento: " + error.message);
+    setFinanceEntries(prev => prev.filter(e => e.id !== id));
   }
-
   async function saveFinanceAccount(event) {
     event.preventDefault();
-
-    if (!supabase || !user?.id) {
-      alert("Usuário não autenticado.");
-      return;
-    }
-
-    if (!financeAccountForm.bank_name.trim()) {
-      alert("Informe o banco.");
-      return;
-    }
-
-    if (!financeAccountForm.account_name.trim()) {
-      alert("Informe o nome da conta.");
-      return;
-    }
-
-    const initialBalance =
-      Number(
-        String(financeAccountForm.initial_balance || "")
-          .replace(",", ".")
-      ) || 0;
-
-    const payload = {
-      user_id: user.id,
-      bank_name: financeAccountForm.bank_name.trim(),
-      account_name: financeAccountForm.account_name.trim(),
-      account_type: financeAccountForm.account_type,
-      agency: financeAccountForm.agency.trim() || null,
-      account_number:
-        financeAccountForm.account_number.trim() || null,
-      initial_balance: initialBalance,
-      status: financeAccountForm.status
-    };
-
-    const { data, error } = await supabase
-      .from("ai_finance_accounts")
-      .insert(payload)
-      .select("*")
-      .single();
-
-    if (error) {
-      console.error("Erro ao salvar conta:", error);
-      alert("Erro ao salvar conta: " + error.message);
-      return;
-    }
-
-    setFinanceAccounts(prev => [...prev, data]);
-
-    setFinanceAccountForm({
-      bank_name: "",
-      account_name: "",
-      account_type: "CORRENTE",
-      agency: "",
-      account_number: "",
-      initial_balance: "",
-      status: "ATIVA"
-    });
-
+    if (!supabase || !user?.id) return alert("Usuário não autenticado.");
+    if (!financeAccountForm.bank_name.trim()) return alert("Informe o banco.");
+    if (!financeAccountForm.account_name.trim()) return alert("Informe o nome da conta.");
+    const initialBalance = Number(String(financeAccountForm.initial_balance || "").replace(",",".")) || 0;
+    const payload = { user_id:user.id, bank_name:financeAccountForm.bank_name.trim(), account_name:financeAccountForm.account_name.trim(), account_type:financeAccountForm.account_type, agency:financeAccountForm.agency.trim() || null, account_number:financeAccountForm.account_number.trim() || null, initial_balance:initialBalance, status:financeAccountForm.status };
+    const { data, error } = await supabase.from("ai_finance_accounts").insert(payload).select("*").single();
+    if (error) return alert("Erro ao salvar conta: " + error.message);
+    setFinanceAccounts(prev => [...prev,data]);
+    setFinanceAccountForm({bank_name:"",account_name:"",account_type:"CORRENTE",agency:"",account_number:"",initial_balance:"",status:"ATIVA"});
     setShowFinanceAccounts(false);
   }
-
   async function deleteFinanceAccount(id) {
-    if (!supabase || !user?.id || !id) return;
-
-    const confirmed = window.confirm(
-      "Deseja realmente excluir esta conta?"
-    );
-
-    if (!confirmed) return;
-
-    const { error } = await supabase
-      .from("ai_finance_accounts")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", user.id);
-
-    if (error) {
-      console.error("Erro ao excluir conta:", error);
-      alert(
-        "Não foi possível excluir a conta. " +
-        "Ela pode possuir lançamentos financeiros vinculados."
-      );
-      return;
-    }
-
-    setFinanceAccounts(prev =>
-      prev.filter(account => account.id !== id)
-    );
+    if (!supabase || !user?.id || !window.confirm("Deseja realmente excluir esta conta?")) return;
+    const { error } = await supabase.from("ai_finance_accounts").delete().eq("id",id).eq("user_id",user.id);
+    if (error) return alert("Não foi possível excluir a conta. Ela pode possuir lançamentos vinculados.");
+    setFinanceAccounts(prev => prev.filter(a => a.id !== id));
   }
   return (
-    <>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}><h1>Financeiro</h1><RefreshButton /></div>
-
-      <div className="panel">
-        <h2>Gest&atilde;o financeira do instrutor</h2>
-
-        <p>
-          Centralize receitas, despesas, custos operacionais e
-          resultado financeiro em um &uacute;nico m&oacute;dulo.
-        </p>
-
-        <div className="grid">
-
-          <div className="metric">
-            <div style={{ fontSize: "12px", opacity: 0.7 }}>
-              RECEITAS
-            </div>
-            {formatCurrency(financeRevenue)}
-          </div>
-
-          <div className="metric">
-            <div style={{ fontSize: "12px", opacity: 0.7 }}>
-              DESPESAS
-            </div>
-            {formatCurrency(financeExpenses)}
-          </div>
-
-          <div className="metric">
-            <div style={{ fontSize: "12px", opacity: 0.7 }}>
-              RESULTADO
-            </div>
-            {formatCurrency(financeResult)}
-          </div>
-
+    <div>
+      <section style={{...card,background:"linear-gradient(135deg,#f7fbff 0%,#fff 72%)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"12px",flexWrap:"wrap"}}>
+          <div><div style={{color:"#52708f",fontSize:"11px",fontWeight:900,letterSpacing:".08em"}}>GESTÃO FINANCEIRA</div><h1 style={{margin:"4px 0",fontSize:"26px"}}>Financeiro</h1><p style={{margin:0,color:"#64758a"}}>Controle de receitas, despesas, contas e resultado em uma única visão.</p></div>
+          <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}><RefreshButton/><button type="button" onClick={()=>setShowFinanceForm(true)}>+ LANÇAMENTO</button><button type="button" className="secondary" onClick={()=>setShowFinanceAccounts(true)}>+ CONTA</button></div>
         </div>
-      </div>
-
-      <div className="panel">
-
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "12px",
-          flexWrap: "wrap"
-        }}>
-          <div>
-            <h2>Lan&ccedil;amentos financeiros</h2>
-            <p>
-              Registre receitas e despesas do instrutor.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowFinanceForm(!showFinanceForm)}
-          >
-            {showFinanceForm
-              ? "FECHAR"
-              : String.fromCharCode(43,32,78,79,86,79,32,76,65,78,199,65,77,69,78,84,79)}
-          </button>
-        </div>
-
-        {showFinanceForm && (
-          <form
-            onSubmit={saveFinanceEntry}
-            style={{
-              marginTop: "20px",
-              display: "grid",
-              gap: "14px"
-            }}
-          >
-
-            <div className="grid">
-
-              <label>
-                Tipo
-                <select
-                  value={financeForm.type}
-                  onChange={(e) =>
-                    setFinanceForm({
-                      ...financeForm,
-                      type: e.target.value
-                    })
-                  }
-                >
-                  <option value="RECEITA">Receita</option>
-                  <option value="DESPESA">Despesa</option>
-                </select>
-              </label>
-
-              <label>
-                Data
-                <input
-                  type="date"
-                  value={financeForm.entry_date}
-                  onChange={(e) =>
-                    setFinanceForm({
-                      ...financeForm,
-                      entry_date: e.target.value
-                    })
-                  }
-                  required
-                />
-              </label>
-
-              <label>
-                Categoria
-                <select
-                  value={financeForm.category}
-                  onChange={(e) =>
-                    setFinanceForm({
-                      ...financeForm,
-                      category: e.target.value
-                    })
-                  }
-                  required
-                >
-                  <option value="">Selecione</option>
-                  <option value="Aula">Aula</option>
-                  <option value="Combustível">Combust&iacute;vel</option>
-                  <option value="Manutenção">Manuten&ccedil;&atilde;o</option>
-                  <option value="Seguro">Seguro</option>
-                  <option value="Impostos">Impostos</option>
-                  <option value="Licenciamento">Licenciamento</option>
-                  <option value="IPVA">IPVA</option>
-                  <option value="Financiamento">Financiamento</option>
-                  <option value="Aluguel">Aluguel</option>
-                  <option value="Material">Material</option>
-                  <option value="Outros">Outros</option>
-                </select>
-              </label>
-
-              <label>
-                Valor
-                <input
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  placeholder="0,00"
-                  value={financeForm.amount}
-                  onChange={(e) =>
-                    setFinanceForm({
-                      ...financeForm,
-                      amount: e.target.value
-                    })
-                  }
-                  required
-                />
-              </label>
-
-            </div>
-
-            <label>
-              Descri&ccedil;&atilde;o
-              <input
-                type="text"
-                placeholder="Descreva o lançamento"
-                value={financeForm.description}
-                onChange={(e) =>
-                  setFinanceForm({
-                    ...financeForm,
-                    description: e.target.value
-                  })
-                }
-              />
-            </label>
-
-            <div className="grid">
-
-              <label>
-                Tipo de pessoa
-                <select
-                  value={financeForm.person_type}
-                  onChange={(e) =>
-                    setFinanceForm({
-                      ...financeForm,
-                      person_type: e.target.value,
-                      document: ""
-                    })
-                  }
-                >
-                  <option value="PF">Pessoa Física (PF)</option>
-                  <option value="PJ">Pessoa Jurídica (PJ)</option>
-                </select>
-              </label>
-
-              <label>
-                {financeForm.person_type === "PJ" ? "CNPJ" : "CPF"}
-                <input
-                  value={financeForm.document}
-                  onChange={(e) =>
-                    setFinanceForm({
-                      ...financeForm,
-                      document: e.target.value
-                    })
-                  }
-                  placeholder={financeForm.person_type === "PJ" ? "CNPJ" : "CPF"}
-                  inputMode="numeric"
-                />
-              </label>
-
-              <label>
-                Nome / razão social
-                <input
-                  value={financeForm.counterparty_name}
-                  onChange={(e) =>
-                    setFinanceForm({
-                      ...financeForm,
-                      counterparty_name: e.target.value
-                    })
-                  }
-                  placeholder="Nome do cliente ou empresa"
-                />
-              </label>
-
-              <label>
-                Forma de pagamento
-                <select
-                  value={financeForm.payment_method}
-                  onChange={(e) =>
-                    setFinanceForm({
-                      ...financeForm,
-                      payment_method: e.target.value
-                    })
-                  }
-                >
-                  <option value="">Selecione</option>
-                  <option value="PIX">PIX</option>
-                  <option value="Dinheiro">Dinheiro</option>
-                  <option value="Cartão">Cart&atilde;o</option>
-                  <option value="Transferência">Transfer&ecirc;ncia</option>
-                  <option value="Boleto">Boleto</option>
-                  <option value="Outro">Outro</option>
-                </select>
-              </label>
-
-              <label>
-                Status
-                <select
-                  value={financeForm.status}
-                  onChange={(e) =>
-                    setFinanceForm({
-                      ...financeForm,
-                      status: e.target.value
-                    })
-                  }
-                >
-                  <option value="PAGO">Pago</option>
-                  <option value="PENDENTE">Pendente</option>
-                </select>
-              </label>
-
-            </div>
-
-            <div style={{
-              display: "flex",
-              gap: "10px",
-              flexWrap: "wrap"
-            }}>
-              <button type="submit">
-                SALVAR LAN&Ccedil;AMENTO
-              </button>
-
-              <button
-                type="button"
-                className="link"
-                onClick={() => setShowFinanceForm(false)}
-              >
-                CANCELAR
-              </button>
-            </div>
-
-          </form>
-        )}
-
-      </div>
-
-      <div className="panel">
-        <h2>&Uacute;ltimos lan&ccedil;amentos</h2>
-
-        {financeEntries.length === 0 ? (
-          <p>
-            Nenhum lan&ccedil;amento financeiro registrado.
-          </p>
-        ) : (
-          <div style={{
-            display: "grid",
-            gap: "10px"
-          }}>
-
-            {financeEntries.map(entry => (
-              <div
-                key={entry.id}
-                className="panel"
-                style={{
-                  margin: 0,
-                  padding: "14px"
-                }}
-              >
-
-                <div style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: "12px",
-                  flexWrap: "wrap"
-                }}>
-
-                  <div>
-                    <strong>
-                      {entry.type === "RECEITA"
-                        ? "RECEITA"
-                        : "DESPESA"}
-                    </strong>
-
-                    <div>
-                      {entry.category}
-                    </div>
-
-                    {entry.description && (
-                      <small>{entry.description}</small>
-                    )}
-
-                    <div style={{
-                      fontSize: "12px",
-                      opacity: 0.7,
-                      marginTop: "4px"
-                    }}>
-                      {entry.entry_date}
-                      {" • "}
-                      {entry.status}
-                      {entry.payment_method
-                        ? ` • ${entry.payment_method}`
-                        : ""}
-                    </div>
-                  </div>
-
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px"
-                  }}>
-
-                    <strong>
-                      {formatCurrency(entry.amount)}
-                    </strong>
-
-                    <button
-                      type="button"
-                      className="link"
-                      onClick={() =>
-                        deleteFinanceEntry(entry.id)
-                      }
-                    >
-                      EXCLUIR
-                    </button>
-
-                  </div>
-
-                </div>
-
-              </div>
-            ))}
-
-          </div>
-        )}
-
-      </div>
-
-
-      <div className="panel">
-
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "12px",
-          flexWrap: "wrap"
-        }}>
-
-          <div>
-            <h2>Contas bancárias</h2>
-            <p>
-              Cadastre as contas utilizadas pelo instrutor
-              para controlar entradas e saídas financeiras.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() =>
-              setShowFinanceAccounts(!showFinanceAccounts)
-            }
-          >
-            {showFinanceAccounts
-              ? "FECHAR"
-              : "+ CADASTRAR CONTA"}
-          </button>
-
-        </div>
-
-        {showFinanceAccounts && (
-          <form
-            onSubmit={saveFinanceAccount}
-            style={{
-              marginTop: "20px",
-              display: "grid",
-              gap: "14px"
-            }}
-          >
-
-            <div className="grid">
-
-              <label>
-                Banco
-                <input
-                  type="text"
-                  value={financeAccountForm.bank_name}
-                  onChange={(e) =>
-                    setFinanceAccountForm({
-                      ...financeAccountForm,
-                      bank_name: e.target.value
-                    })
-                  }
-                  placeholder="Ex.: Banco do Brasil"
-                  required
-                />
-              </label>
-
-              <label>
-                Nome da conta
-                <input
-                  type="text"
-                  value={financeAccountForm.account_name}
-                  onChange={(e) =>
-                    setFinanceAccountForm({
-                      ...financeAccountForm,
-                      account_name: e.target.value
-                    })
-                  }
-                  placeholder="Ex.: Conta principal"
-                  required
-                />
-              </label>
-
-              <label>
-                Tipo
-                <select
-                  value={financeAccountForm.account_type}
-                  onChange={(e) =>
-                    setFinanceAccountForm({
-                      ...financeAccountForm,
-                      account_type: e.target.value
-                    })
-                  }
-                >
-                  <option value="CORRENTE">
-                    Conta corrente
-                  </option>
-
-                  <option value="POUPANCA">
-                    Conta poupança
-                  </option>
-
-                  <option value="DIGITAL">
-                    Conta digital
-                  </option>
-
-                  <option value="DINHEIRO">
-                    Carteira / dinheiro
-                  </option>
-                </select>
-              </label>
-
-            </div>
-
-            <div className="grid">
-
-              <label>
-                Agência
-                <input
-                  type="text"
-                  value={financeAccountForm.agency}
-                  onChange={(e) =>
-                    setFinanceAccountForm({
-                      ...financeAccountForm,
-                      agency: e.target.value
-                    })
-                  }
-                />
-              </label>
-
-              <label>
-                Número da conta
-                <input
-                  type="text"
-                  value={financeAccountForm.account_number}
-                  onChange={(e) =>
-                    setFinanceAccountForm({
-                      ...financeAccountForm,
-                      account_number: e.target.value
-                    })
-                  }
-                />
-              </label>
-
-              <label>
-                Saldo inicial
-                <input
-                  type="number"
-                  step="0.01"
-                  value={financeAccountForm.initial_balance}
-                  onChange={(e) =>
-                    setFinanceAccountForm({
-                      ...financeAccountForm,
-                      initial_balance: e.target.value
-                    })
-                  }
-                  placeholder="0,00"
-                />
-              </label>
-
-            </div>
-
-            <label>
-              Status
-              <select
-                value={financeAccountForm.status}
-                onChange={(e) =>
-                  setFinanceAccountForm({
-                    ...financeAccountForm,
-                    status: e.target.value
-                  })
-                }
-              >
-                <option value="ATIVA">Ativa</option>
-                <option value="INATIVA">Inativa</option>
-              </select>
-            </label>
-
-            <div style={{
-              display: "flex",
-              gap: "10px",
-              flexWrap: "wrap"
-            }}>
-
-              <button type="submit">
-                SALVAR CONTA
-              </button>
-
-              <button
-                type="button"
-                className="link"
-                onClick={() => setShowFinanceAccounts(false)}
-              >
-                CANCELAR
-              </button>
-
-            </div>
-
-          </form>
-        )}
-
-        <div style={{
-          marginTop: "20px",
-          display: "grid",
-          gap: "10px"
-        }}>
-
-          {financeAccounts.length === 0 ? (
-
-            <p>
-              Nenhuma conta bancária cadastrada.
-            </p>
-
-          ) : (            financeAccounts.map(account => (
-
-              <div
-                key={account.id}
-                className="panel"
-                style={{
-                  margin: 0,
-                  padding: "14px"
-                }}
-              >
-
-                <div style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: "12px",
-                  flexWrap: "wrap"
-                }}>
-
-                  <div>
-
-                    <strong>
-                      {account.bank_name}
-                    </strong>
-
-                    <div>
-                      {account.account_name}
-                    </div>
-
-                    <small>
-                      {account.account_type}
-                      {account.agency
-                        ? ` • Agência ${account.agency}`
-                        : ""}
-                      {account.account_number
-                        ? ` • Conta ${account.account_number}`
-                        : ""}
-                    </small>
-
-                  </div>
-
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px"
-                  }}>
-
-                    <strong>
-                      {formatCurrency(account.initial_balance)}
-                    </strong>
-
-                    <button
-                      type="button"
-                      className="link"
-                      onClick={() =>
-                        deleteFinanceAccount(account.id)
-                      }
-                    >
-                      EXCLUIR
-                    </button>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-            ))
-
-          )}
-
-        </div>
-
-      </div>
-      <div className="panel">
-        <h2>Custos operacionais</h2>
-
-        <p>
-          Os custos do ve&iacute;culo fazem parte do controle financeiro
-          do instrutor.
-        </p>
-
-        <div style={{
-          display: "flex",
-          gap: "10px",
-          flexWrap: "wrap"
-        }}>
-
-          <button
-            type="button"
-            onClick={() => setShowVehicleForm(true)}
-          >
-            VE&Iacute;CULO E CUSTOS
-          </button>
-
-        </div>
-      </div>
-
-      <div className="panel">
-        <h2>Indicadores financeiros</h2>
-
-        <div className="grid">
-
-          <div className="metric">
-            <div style={{ fontSize: "12px", opacity: 0.7 }}>
-              CUSTO POR KM
-            </div>
-            —
-          </div>
-
-          <div className="metric">
-            <div style={{ fontSize: "12px", opacity: 0.7 }}>
-              CUSTO POR AULA
-            </div>
-            —
-          </div>
-
-          <div className="metric">
-            <div style={{ fontSize: "12px", opacity: 0.7 }}>
-              MARGEM
-            </div>
-            —
-          </div>
-
-        </div>
-      </div>
-    </>
+      </section>
+      <section style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:"10px",marginBottom:"12px"}}>
+        <div style={mini}><small style={{fontWeight:800,color:"#64758a"}}>RECEITAS</small><strong style={{display:"block",marginTop:"5px",fontSize:"20px",color:"#176b48"}}>{formatCurrency(financeRevenue)}</strong></div>
+        <div style={mini}><small style={{fontWeight:800,color:"#64758a"}}>DESPESAS</small><strong style={{display:"block",marginTop:"5px",fontSize:"20px",color:"#a04444"}}>{formatCurrency(financeExpenses)}</strong></div>
+        <div style={mini}><small style={{fontWeight:800,color:"#64758a"}}>PENDENTE</small><strong style={{display:"block",marginTop:"5px",fontSize:"20px",color:"#946b00"}}>{formatCurrency(financePending)}</strong></div>
+        <div style={mini}><small style={{fontWeight:800,color:"#64758a"}}>RESULTADO</small><strong style={{display:"block",marginTop:"5px",fontSize:"20px",color:financeResult>=0?"#176b48":"#a04444"}}>{formatCurrency(financeResult)}</strong></div>
+      </section>
+      {showFinanceForm && <section style={card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}><div><h2 style={{margin:0,fontSize:"18px"}}>Novo lançamento</h2><small style={{color:"#64758a"}}>Registre uma entrada ou saída financeira.</small></div><button type="button" className="secondary" onClick={()=>setShowFinanceForm(false)}>FECHAR</button></div><form onSubmit={saveFinanceEntry} style={{display:"grid",gap:"10px"}}>
+        <div style={grid2}><label>Tipo<select value={financeForm.type} onChange={e=>setFinanceForm({...financeForm,type:e.target.value})}><option value="RECEITA">Receita</option><option value="DESPESA">Despesa</option></select></label><label>Data<input type="date" value={financeForm.entry_date} onChange={e=>setFinanceForm({...financeForm,entry_date:e.target.value})} required/></label><label>Categoria<select value={financeForm.category} onChange={e=>setFinanceForm({...financeForm,category:e.target.value})} required><option value="">Selecione</option>{["Aula","Combustível","Manutenção","Seguro","Impostos","Licenciamento","IPVA","Financiamento","Aluguel","Material","Outros"].map(x=><option key={x}>{x}</option>)}</select></label><label>Valor<input type="number" min="0.01" step="0.01" value={financeForm.amount} onChange={e=>setFinanceForm({...financeForm,amount:e.target.value})} required/></label></div>
+        <label>Descrição<input value={financeForm.description} onChange={e=>setFinanceForm({...financeForm,description:e.target.value})} placeholder="Ex.: Aula prática, combustível, manutenção..." /></label>
+        <div style={grid2}><label>Nome / razão social<input value={financeForm.counterparty_name} onChange={e=>setFinanceForm({...financeForm,counterparty_name:e.target.value})}/></label><label>CPF / CNPJ<input value={financeForm.document} onChange={e=>setFinanceForm({...financeForm,document:e.target.value})}/></label><label>Forma de pagamento<select value={financeForm.payment_method} onChange={e=>setFinanceForm({...financeForm,payment_method:e.target.value})}><option value="">Selecione</option><option>PIX</option><option>Dinheiro</option><option>Cartão</option><option>Transferência</option><option>Boleto</option><option>Outro</option></select></label><label>Conta<select value={financeForm.account_id||""} onChange={e=>setFinanceForm({...financeForm,account_id:e.target.value})}><option value="">Sem conta vinculada</option>{financeAccounts.map(a=><option key={a.id} value={a.id}>{a.bank_name} — {a.account_name}</option>)}</select></label><label>Status<select value={financeForm.status} onChange={e=>setFinanceForm({...financeForm,status:e.target.value})}><option value="PAGO">Pago</option><option value="PENDENTE">Pendente</option></select></label></div>
+        <div style={{display:"flex",justifyContent:"flex-end",gap:"8px"}}><button type="submit">SALVAR LANÇAMENTO</button><button type="button" className="secondary" onClick={()=>setShowFinanceForm(false)}>CANCELAR</button></div></form></section>}
+      <section style={card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}}><div><div style={{color:"#52708f",fontSize:"11px",fontWeight:900,letterSpacing:".08em"}}>MOVIMENTAÇÕES</div><h2 style={{margin:"3px 0 0",fontSize:"18px"}}>Últimos lançamentos</h2></div><span style={{color:"#64758a",fontSize:"12px"}}>{financeEntries.length} registro(s)</span></div>
+        {financeEntries.length===0 ? <div style={{...mini,textAlign:"center",color:"#64758a"}}>Nenhum lançamento financeiro registrado.</div> : <div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse",fontSize:"12px"}}><thead><tr>{["Data","Tipo","Categoria","Descrição","Status","Valor",""].map((h,i)=><th key={i} style={{textAlign:i===5?"right":"left",padding:"8px",background:"#f5f8fc",color:"#60738d"}}>{h}</th>)}</tr></thead><tbody>{financeEntries.map(entry=>{const rev=String(entry.type||"").toUpperCase()==="RECEITA";return <tr key={entry.id}><td style={{padding:"8px",borderTop:"1px solid #edf1f5"}}>{entry.entry_date||"—"}</td><td style={{padding:"8px",borderTop:"1px solid #edf1f5",fontWeight:800}}>{rev?"Receita":"Despesa"}</td><td style={{padding:"8px",borderTop:"1px solid #edf1f5"}}>{entry.category||"—"}</td><td style={{padding:"8px",borderTop:"1px solid #edf1f5"}}>{entry.description||"—"}</td><td style={{padding:"8px",borderTop:"1px solid #edf1f5"}}>{entry.status||"—"}</td><td style={{padding:"8px",borderTop:"1px solid #edf1f5",textAlign:"right",fontWeight:900,color:rev?"#176b48":"#a04444"}}>{rev?"+":"−"} {formatCurrency(entry.amount)}</td><td style={{padding:"8px",borderTop:"1px solid #edf1f5",textAlign:"right"}}><button type="button" className="link" onClick={()=>deleteFinanceEntry(entry.id)}>EXCLUIR</button></td></tr>})}</tbody></table></div>}</section>
+      <section style={card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"10px"}}><div><div style={{color:"#52708f",fontSize:"11px",fontWeight:900,letterSpacing:".08em"}}>CONTAS</div><h2 style={{margin:"3px 0 0",fontSize:"18px"}}>Contas bancárias</h2></div><div style={{display:"flex",gap:"8px",alignItems:"center"}}><span style={{color:"#64758a",fontSize:"12px"}}>{financeAccounts.length} conta(s)</span>{!showFinanceAccounts&&<button type="button" className="secondary" onClick={()=>setShowFinanceAccounts(true)}>+ CADASTRAR</button>}</div></div>
+        {showFinanceAccounts&&<form onSubmit={saveFinanceAccount} style={{...mini,display:"grid",gap:"10px",marginBottom:"10px"}}><div style={grid2}><label>Banco<input value={financeAccountForm.bank_name} onChange={e=>setFinanceAccountForm({...financeAccountForm,bank_name:e.target.value})} required/></label><label>Nome da conta<input value={financeAccountForm.account_name} onChange={e=>setFinanceAccountForm({...financeAccountForm,account_name:e.target.value})} required/></label><label>Tipo<select value={financeAccountForm.account_type} onChange={e=>setFinanceAccountForm({...financeAccountForm,account_type:e.target.value})}><option value="CORRENTE">Corrente</option><option value="POUPANCA">Poupança</option><option value="OUTRA">Outra</option></select></label><label>Agência<input value={financeAccountForm.agency} onChange={e=>setFinanceAccountForm({...financeAccountForm,agency:e.target.value})}/></label><label>Número da conta<input value={financeAccountForm.account_number} onChange={e=>setFinanceAccountForm({...financeAccountForm,account_number:e.target.value})}/></label><label>Saldo inicial<input type="number" step="0.01" value={financeAccountForm.initial_balance} onChange={e=>setFinanceAccountForm({...financeAccountForm,initial_balance:e.target.value})}/></label></div><label>Status<select value={financeAccountForm.status} onChange={e=>setFinanceAccountForm({...financeAccountForm,status:e.target.value})}><option value="ATIVA">Ativa</option><option value="INATIVA">Inativa</option></select></label><div style={{display:"flex",justifyContent:"flex-end",gap:"8px"}}><button type="submit">SALVAR CONTA</button><button type="button" className="secondary" onClick={()=>setShowFinanceAccounts(false)}>CANCELAR</button></div></form>}
+        {financeAccounts.length===0?<div style={{...mini,color:"#64758a"}}>Nenhuma conta bancária cadastrada.</div>:<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:"8px"}}>{financeAccounts.map(a=><div key={a.id} style={{...mini,display:"flex",justifyContent:"space-between",gap:"10px",alignItems:"center"}}><div><strong>{a.bank_name}</strong><div>{a.account_name}</div><small style={{color:"#64758a"}}>{a.account_type}{a.agency?" • Ag. "+a.agency:""}{a.account_number?" • Cta. "+a.account_number:""}</small></div><div style={{textAlign:"right"}}><strong>{formatCurrency(a.initial_balance)}</strong><button type="button" className="link" onClick={()=>deleteFinanceAccount(a.id)}>EXCLUIR</button></div></div>)}</div>}
+        <div style={{marginTop:"10px",padding:"10px 12px",borderRadius:"10px",background:"#f7faff",color:"#50647e",fontSize:"12px"}}>Saldo registrado: <strong>{formatCurrency(registeredBalance)}</strong> · saldo inicial + resultado.</div>
+      </section>
+    </div>
   );
 }
 if (tab === "agenda" && showAgendaForm) {
