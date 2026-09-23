@@ -2126,7 +2126,75 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
             </div>
           ))}
         </div>
+      </      <div
+        className="panel"
+        style={{
+          position: "sticky",
+          top: "0",
+          zIndex: 20,
+          marginBottom: "12px",
+          padding: "12px 14px",
+          background: "rgba(255,255,255,.97)",
+          backdropFilter: "blur(8px)",
+          border: "1px solid #cfdceb",
+          boxShadow: "0 8px 22px rgba(20,50,80,.10)"
+        }}
+      >
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+          flexWrap: "wrap"
+        }}>
+          <div>
+            <div style={{fontSize:"10px",fontWeight:900,letterSpacing:".08em",color:"#52708f"}}>CONTROLES DA AULA</div>
+            <div style={{fontSize:"13px",fontWeight:900,color:"#18345f",marginTop:"3px"}}>
+              Fase {currentPhase} — {lessonPhaseLabel(currentPhase)}
+            </div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
+            <RefreshButton />
+            {status === "paused" ? (
+              <button type="button" onClick={resumeLesson} disabled={busy}>
+                ▶ RETOMAR AULA
+              </button>
+            ) : (
+              <button type="button" onClick={pauseLesson} disabled={busy || isFinished}>
+                ⏸ PAUSAR
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={advancePhase}
+              disabled={busy || status === "paused" || currentPhase >= 5 || isFinished}
+              style={{
+                fontWeight:900,
+                minWidth:"220px",
+                background: currentPhase >= 5 ? "#e9eef4" : "#176fc1",
+                color: currentPhase >= 5 ? "#66778a" : "#fff"
+              }}
+            >
+              {currentPhase >= 5 ? "FASE 5 — PARADA SEGURA" : "✓ CONCLUIR FASE E AVANÇAR →"}
+            </button>
+          </div>
+        </div>
+        <div style={{
+          marginTop:"9px",
+          padding:"8px 10px",
+          borderRadius:"8px",
+          background:"#f5f9fe",
+          border:"1px solid #dbe7f4",
+          fontSize:"11px",
+          color:"#52657a"
+        }}>
+          {currentPhase < 5
+            ? "Conclua a fase atual para liberar a próxima."
+            : "Na Parada Segura, complete a avaliação, informe o KM final e conclua a aula."}
+        </div>
       </div>
+
+div>
 
       <div className="panel">
         <div style={{
