@@ -5153,251 +5153,6 @@ Documento gerado pelo ENAT — Assistente do Instrutor.
     ["assinatura", "ASSINATURA ENAT", BadgeCheck]
   ];
 
-if (tab === "aulas" && !showLessonForm && !showLessonHistory && !activeLesson) {
-  const hoje = new Date();
-  const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-  const fimHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1);
-
-  const aulasHoje = agendaLessons.filter(lesson => {
-    if (!lesson.scheduled_at) return false;
-    const d = new Date(lesson.scheduled_at);
-    return d >= inicioHoje && d < fimHoje;
-  });
-
-  const proximasAulas = agendaLessons.filter(lesson => {
-    if (!lesson.scheduled_at) return false;
-    return new Date(lesson.scheduled_at) >= hoje;
-  }).sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
-
-  const concluidas = agendaLessons.filter(lesson =>
-    String(lesson.status || "").toLowerCase() === "completed"
-  ).length;
-
-  const runningOrPaused = agendaLessons.filter(lesson =>
-    ["running", "paused"].includes(String(lesson.status || "").toLowerCase())
-  );
-
-  function nomeAlunoAula(lesson) {
-    const aluno = Array.isArray(lesson.ai_students) ? lesson.ai_students[0] : lesson.ai_students;
-    return aluno?.full_name || "Aluno não identificado";
-  }
-
-  return (
-    <div>
-      <div className="panel" style={{
-        background: "linear-gradient(135deg, #f7faff 0%, #ffffff 72%)",
-        border: "1px solid #dfe7f2",
-        marginBottom: "14px"
-      }}>
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: "16px",
-          flexWrap: "wrap"
-        }}>
-          <div>
-            <div style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", color: "#52708f", marginBottom: "5px" }}>
-              GESTÃO DE AULAS
-            </div>
-            <h1 style={{ margin: 0, fontSize: "28px" }}>Aulas</h1>
-            <p style={{ margin: "7px 0 0", maxWidth: "700px" }}>
-              Inicie, acompanhe e finalize as aulas com registro de quilometragem, avaliação andragógica e HSI-DOTH-P.
-            </p>
-          </div>
-
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-            <RefreshButton />
-            <button type="button" onClick={() => setShowLessonForm(true)}>+ INICIAR AULA</button>
-            <button
-              type="button"
-              className="link"
-              onClick={() => { setSelectedLesson(null); setShowLessonHistory(true); }}
-            >
-              HISTÓRICO
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {runningOrPaused.length > 0 && (
-        <div className="panel" style={{
-          marginBottom: "14px",
-          border: "2px solid #f0b429",
-          background: "#fff9e8"
-        }}>
-          <div style={{ fontWeight: 900, color: "#7a5200" }}>ATENÇÃO — EXISTE UMA AULA NÃO FINALIZADA</div>
-          <p style={{ margin: "6px 0 12px" }}>
-            Uma aula em andamento ou pausada deve ser concluída antes de iniciar outra. Use <strong>ATUALIZAR</strong> para recuperar os dados atuais sem encerrar a aula.
-          </p>
-          <button type="button" onClick={() => setActiveLesson(runningOrPaused[0])}>
-            RETOMAR AULA
-          </button>
-        </div>
-      )}
-
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-        gap: "10px",
-        marginBottom: "14px"
-      }}>
-        {[
-          ["HOJE", aulasHoje.length],
-          ["PRÓXIMAS", proximasAulas.length],
-          ["CONCLUÍDAS", concluidas],
-          ["EM ABERTO", runningOrPaused.length]
-        ].map(([label, value]) => (
-          <div key={label} className="panel" style={{ margin: 0, padding: "14px 16px" }}>
-            <div style={{ fontSize: "10px", fontWeight: 800, opacity: 0.62, letterSpacing: "0.06em" }}>{label}</div>
-            <div style={{ fontSize: "26px", fontWeight: 900, marginTop: "3px" }}>{value}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="panel" style={{ marginBottom: "14px" }}>
-        <h2 style={{ marginBottom: "5px" }}>Execução da aula</h2>
-        <p style={{ marginTop: 0 }}>
-          A aula é conduzida em cinco fases: preparação, deslocamento, desenvolvimento, avaliação e parada segura.
-        </p>
-
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(5, minmax(120px, 1fr))",
-          gap: "8px",
-          overflowX: "auto"
-        }}>
-          {[
-            ["1", "PREPARAÇÃO"],
-            ["2", "DESLOCAMENTO"],
-            ["3", "DESENVOLVIMENTO"],
-            ["4", "AVALIAÇÃO"],
-            ["5", "PARADA SEGURA"]
-          ].map(([n, label]) => (
-            <div key={n} style={{
-              padding: "12px",
-              border: "1px solid #dfe7f2",
-              borderRadius: "9px",
-              background: "#fbfcfe",
-              minWidth: "120px"
-            }}>
-              <div style={{ fontSize: "10px", fontWeight: 800, opacity: 0.6 }}>FASE {n}</div>
-              <div style={{ marginTop: "4px", fontSize: "11px", fontWeight: 800 }}>{label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="panel" style={{ marginBottom: "14px" }}>
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "12px",
-          flexWrap: "wrap",
-          marginBottom: "12px"
-        }}>
-          <div>
-            <h2 style={{ marginBottom: "4px" }}>Próximas aulas</h2>
-            <p style={{ margin: 0, fontSize: "13px" }}>
-              Aulas programadas que podem ser iniciadas diretamente.
-            </p>
-          </div>
-          <button type="button" className="link" onClick={() => setTab("agenda")}>VER AGENDA</button>
-        </div>
-
-        {proximasAulas.length === 0 ? (
-          <div style={{
-            padding: "28px 18px",
-            textAlign: "center",
-            border: "1px dashed #cfdbe8",
-            borderRadius: "10px",
-            background: "#fafcff"
-          }}>
-            <div style={{ fontSize: "30px" }}>🚗</div>
-            <h3 style={{ marginBottom: "5px" }}>Nenhuma aula programada</h3>
-            <p style={{ margin: "0 auto 14px", maxWidth: "500px" }}>
-              Você pode iniciar uma nova aula ou organizar o próximo horário na Agenda.
-            </p>
-            <button type="button" onClick={() => setShowLessonForm(true)}>+ INICIAR AULA</button>
-          </div>
-        ) : (
-          <div style={{ display: "grid", gap: "8px" }}>
-            {proximasAulas.slice(0, 8).map(lesson => (
-              <div key={lesson.id} style={{
-                display: "grid",
-                gridTemplateColumns: "90px minmax(180px, 1fr) 90px minmax(150px, 1fr) auto",
-                gap: "10px",
-                alignItems: "center",
-                padding: "11px 12px",
-                border: "1px solid #dfe7f2",
-                borderRadius: "9px",
-                background: "#fff"
-              }}>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: "10px", opacity: 0.62 }}>HORÁRIO</div>
-                  <strong>{new Date(lesson.scheduled_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</strong>
-                </div>
-                <div>
-                  <strong>{nomeAlunoAula(lesson)}</strong>
-                  <div style={{ fontSize: "11px", opacity: 0.7, marginTop: "3px" }}>
-                    {"CNH " + (lesson.cnh_category || "—") + (lesson.objective ? " • " + lesson.objective : "")}
-                  </div>
-                </div>
-                <div style={{ fontSize: "12px", textAlign: "center" }}>
-                  {new Date(lesson.scheduled_at).toLocaleDateString("pt-BR")}
-                </div>
-                <div style={{ fontSize: "12px", opacity: 0.72 }}>
-                  {lesson.status === "scheduled" ? "Pronta para iniciar" : String(lesson.status || "").toUpperCase()}
-                </div>
-                <div>
-                  {String(lesson.status || "").toLowerCase() === "scheduled" && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setScheduledLessonToStart(lesson);
-                        setShowLessonForm(true);
-                      }}
-                      style={{ margin: 0 }}
-                    >
-                      INICIAR
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="panel">
-        <h2 style={{ marginBottom: "5px" }}>Regras da execução</h2>
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-          gap: "10px"
-        }}>
-          {[
-            ["AULA INICIADA", "A aula permanece aberta até a conclusão formal."],
-            ["FINALIZAÇÃO", "É necessário cumprir as cinco fases, avaliação, HSI-DOTH-P e KM final."],
-            ["ATUALIZAÇÃO", "Depois da conclusão, os dados devem ser atualizados para refletir o encerramento."]
-          ].map(([title, text]) => (
-            <div key={title} style={{
-              padding: "13px",
-              border: "1px solid #dfe7f2",
-              borderRadius: "10px",
-              background: "#f8fbff"
-            }}>
-              <div style={{ fontSize: "10px", fontWeight: 800, color: "#2457a6" }}>{title}</div>
-              <div style={{ marginTop: "6px", fontSize: "12px", lineHeight: 1.5 }}>{text}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 if (tab === "financeiro" && showVehicleForm) {
   return (
     <VehicleForm
@@ -6976,6 +6731,252 @@ if (tab === "agenda") {
     </div>
   );
 }
+if (tab === "aulas" && !showLessonForm && !showLessonHistory && !activeLesson) {
+  const hoje = new Date();
+  const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  const fimHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1);
+
+  const aulasHoje = agendaLessons.filter(lesson => {
+    if (!lesson.scheduled_at) return false;
+    const d = new Date(lesson.scheduled_at);
+    return d >= inicioHoje && d < fimHoje;
+  });
+
+  const proximasAulas = agendaLessons.filter(lesson => {
+    if (!lesson.scheduled_at) return false;
+    return new Date(lesson.scheduled_at) >= hoje;
+  }).sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
+
+  const concluidas = agendaLessons.filter(lesson =>
+    String(lesson.status || "").toLowerCase() === "completed"
+  ).length;
+
+  const runningOrPaused = agendaLessons.filter(lesson =>
+    ["running", "paused"].includes(String(lesson.status || "").toLowerCase())
+  );
+
+  function nomeAlunoAula(lesson) {
+    const aluno = Array.isArray(lesson.ai_students) ? lesson.ai_students[0] : lesson.ai_students;
+    return aluno?.full_name || "Aluno não identificado";
+  }
+
+  return (
+    <div>
+      <div className="panel" style={{
+        background: "linear-gradient(135deg, #f7faff 0%, #ffffff 72%)",
+        border: "1px solid #dfe7f2",
+        marginBottom: "14px"
+      }}>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "16px",
+          flexWrap: "wrap"
+        }}>
+          <div>
+            <div style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", color: "#52708f", marginBottom: "5px" }}>
+              GESTÃO DE AULAS
+            </div>
+            <h1 style={{ margin: 0, fontSize: "28px" }}>Aulas</h1>
+            <p style={{ margin: "7px 0 0", maxWidth: "700px" }}>
+              Inicie, acompanhe e finalize as aulas com registro de quilometragem, avaliação andragógica e HSI-DOTH-P.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+            <RefreshButton />
+            <button type="button" onClick={() => setShowLessonForm(true)}>+ INICIAR AULA</button>
+            <button
+              type="button"
+              className="link"
+              onClick={() => { setSelectedLesson(null); setShowLessonHistory(true); }}
+            >
+              HISTÓRICO
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {runningOrPaused.length > 0 && (
+        <div className="panel" style={{
+          marginBottom: "14px",
+          border: "2px solid #f0b429",
+          background: "#fff9e8"
+        }}>
+          <div style={{ fontWeight: 900, color: "#7a5200" }}>ATENÇÃO — EXISTE UMA AULA NÃO FINALIZADA</div>
+          <p style={{ margin: "6px 0 12px" }}>
+            Uma aula em andamento ou pausada deve ser concluída antes de iniciar outra. Use <strong>ATUALIZAR</strong> para recuperar os dados atuais sem encerrar a aula.
+          </p>
+          <button type="button" onClick={() => setActiveLesson(runningOrPaused[0])}>
+            RETOMAR AULA
+          </button>
+        </div>
+      )}
+
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+        gap: "10px",
+        marginBottom: "14px"
+      }}>
+        {[
+          ["HOJE", aulasHoje.length],
+          ["PRÓXIMAS", proximasAulas.length],
+          ["CONCLUÍDAS", concluidas],
+          ["EM ABERTO", runningOrPaused.length]
+        ].map(([label, value]) => (
+          <div key={label} className="panel" style={{ margin: 0, padding: "14px 16px" }}>
+            <div style={{ fontSize: "10px", fontWeight: 800, opacity: 0.62, letterSpacing: "0.06em" }}>{label}</div>
+            <div style={{ fontSize: "26px", fontWeight: 900, marginTop: "3px" }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="panel" style={{ marginBottom: "14px" }}>
+        <h2 style={{ marginBottom: "5px" }}>Execução da aula</h2>
+        <p style={{ marginTop: 0 }}>
+          A aula é conduzida em cinco fases: preparação, deslocamento, desenvolvimento, avaliação e parada segura.
+        </p>
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(5, minmax(120px, 1fr))",
+          gap: "8px",
+          overflowX: "auto"
+        }}>
+          {[
+            ["1", "PREPARAÇÃO"],
+            ["2", "DESLOCAMENTO"],
+            ["3", "DESENVOLVIMENTO"],
+            ["4", "AVALIAÇÃO"],
+            ["5", "PARADA SEGURA"]
+          ].map(([n, label]) => (
+            <div key={n} style={{
+              padding: "12px",
+              border: "1px solid #dfe7f2",
+              borderRadius: "9px",
+              background: "#fbfcfe",
+              minWidth: "120px"
+            }}>
+              <div style={{ fontSize: "10px", fontWeight: 800, opacity: 0.6 }}>FASE {n}</div>
+              <div style={{ marginTop: "4px", fontSize: "11px", fontWeight: 800 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginBottom: "14px" }}>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "12px",
+          flexWrap: "wrap",
+          marginBottom: "12px"
+        }}>
+          <div>
+            <h2 style={{ marginBottom: "4px" }}>Próximas aulas</h2>
+            <p style={{ margin: 0, fontSize: "13px" }}>
+              Aulas programadas que podem ser iniciadas diretamente.
+            </p>
+          </div>
+          <button type="button" className="link" onClick={() => setTab("agenda")}>VER AGENDA</button>
+        </div>
+
+        {proximasAulas.length === 0 ? (
+          <div style={{
+            padding: "28px 18px",
+            textAlign: "center",
+            border: "1px dashed #cfdbe8",
+            borderRadius: "10px",
+            background: "#fafcff"
+          }}>
+            <div style={{ fontSize: "30px" }}>🚗</div>
+            <h3 style={{ marginBottom: "5px" }}>Nenhuma aula programada</h3>
+            <p style={{ margin: "0 auto 14px", maxWidth: "500px" }}>
+              Você pode iniciar uma nova aula ou organizar o próximo horário na Agenda.
+            </p>
+            <button type="button" onClick={() => setShowLessonForm(true)}>+ INICIAR AULA</button>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: "8px" }}>
+            {proximasAulas.slice(0, 8).map(lesson => (
+              <div key={lesson.id} style={{
+                display: "grid",
+                gridTemplateColumns: "90px minmax(180px, 1fr) 90px minmax(150px, 1fr) auto",
+                gap: "10px",
+                alignItems: "center",
+                padding: "11px 12px",
+                border: "1px solid #dfe7f2",
+                borderRadius: "9px",
+                background: "#fff"
+              }}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: "10px", opacity: 0.62 }}>HORÁRIO</div>
+                  <strong>{new Date(lesson.scheduled_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</strong>
+                </div>
+                <div>
+                  <strong>{nomeAlunoAula(lesson)}</strong>
+                  <div style={{ fontSize: "11px", opacity: 0.7, marginTop: "3px" }}>
+                    {"CNH " + (lesson.cnh_category || "—") + (lesson.objective ? " • " + lesson.objective : "")}
+                  </div>
+                </div>
+                <div style={{ fontSize: "12px", textAlign: "center" }}>
+                  {new Date(lesson.scheduled_at).toLocaleDateString("pt-BR")}
+                </div>
+                <div style={{ fontSize: "12px", opacity: 0.72 }}>
+                  {lesson.status === "scheduled" ? "Pronta para iniciar" : String(lesson.status || "").toUpperCase()}
+                </div>
+                <div>
+                  {String(lesson.status || "").toLowerCase() === "scheduled" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScheduledLessonToStart(lesson);
+                        setShowLessonForm(true);
+                      }}
+                      style={{ margin: 0 }}
+                    >
+                      INICIAR
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="panel">
+        <h2 style={{ marginBottom: "5px" }}>Regras da execução</h2>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+          gap: "10px"
+        }}>
+          {[
+            ["AULA INICIADA", "A aula permanece aberta até a conclusão formal."],
+            ["FINALIZAÇÃO", "É necessário cumprir as cinco fases, avaliação, HSI-DOTH-P e KM final."],
+            ["ATUALIZAÇÃO", "Depois da conclusão, os dados devem ser atualizados para refletir o encerramento."]
+          ].map(([title, text]) => (
+            <div key={title} style={{
+              padding: "13px",
+              border: "1px solid #dfe7f2",
+              borderRadius: "10px",
+              background: "#f8fbff"
+            }}>
+              <div style={{ fontSize: "10px", fontWeight: 800, color: "#2457a6" }}>{title}</div>
+              <div style={{ marginTop: "6px", fontSize: "12px", lineHeight: 1.5 }}>{text}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
     const p = pages[tab];
 
 if (p) {
