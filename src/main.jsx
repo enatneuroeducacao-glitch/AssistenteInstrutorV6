@@ -1730,35 +1730,754 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
     const handleRefresh = () => refreshCurrentLesson();
     window.addEventListener("enat:refresh", handleRefresh);
 
-    return (
+    return () => {
+      active = false;
+      window.removeEventListener("enat:refresh", handleRefresh);
+    };
+  }, [currentLesson?.id, user?.id]);
+
+  const currentPhase = Number(currentLesson?.phase || 1);
+  const status = currentLesson?.status || "running";
+  const isFinished = status === "completed" || status === "canceled";
+
+  function formatDate(value) {
+    if (!value) return "Não informado";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString("pt-BR");
+  }
+
+  function elapsedMinutes() {
+    if (!currentLesson?.started_at) return null;
+    const start = new Date(currentLesson.started_at).getTime();
+    const endValue = currentLesson.ended_at
+      ? new Date(currentLesson.ended_at).getTime()
+      : Date.now();
+    if (!Number.isFinite(start) || !Number.isFinite(endValue)) return null;
+    return Math.max(0, Math.round((endValue - start) / 60000));
+  }
+
+  async function updateLesson(patch, successMessage) {
+    if (readOnly || busy) return;
+
+    setBusy(true);
+    setMessage("");
+
+    try {
+      const { data, error } = await supabase
+        .from("ai_lessons")
+        .update(patch)
+        .eq("id", currentLesson.id)
+        .eq("user_id", user.id)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      setCurrentLesson(data);
+      if (successMessage) setMessage(successMessage);
+      return data;
+    } catch (error) {
+      console.error("Erro ao atualizar aula:", error);
+      setMessage(error?.message || "Não foi possível atualizar a aula.");
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function advancePhase() {
+    if (readOnly || busy || isFinished) return;
+
+    if (status === "paused") {
+      setMessage("Retome a aula antes de avançar para a próxima fase.");
+      return;
+    }
+
+    if (currentPhase >= 5) {
+      setMessage("A última fase é a Parada Segura. Para concluir, informe o KM final e finalize a aula.");
+      return;
+    }
+
+    // A fase 4 — Avaliação — só libera a Parada Segura depois que
+    // os dois conjuntos de avaliação foram preenchidos.
+    if (currentPhase === 4) {
+      if (!evaluationComplete) {
+        setMessage("Preencha os cinco fatores da avaliação andragógica antes de avançar para a Parada Segura.");
+        return;
+      }
+      if (!hsiComplete) {
+        setMessage("Preencha os cinco fatores do HSI-DOTH-P antes de avançar para a Parada Segura.");
+        return;
+      }
+    }
+
+    const nextPhase = currentPhase + 1;
+    await updateLesson(
+      { phase: nextPhase, status: "running" },
+      `Fase atualizada para ${lessonPhaseLabel(nextPhase)}.`
+    );
+  }
+
+  async function pauseLesson() {
+    if (readOnly || busy || isFinished) return;
+    await updateLesson({ status: "paused" }, "Aula pausada.");
+  }
+
+  async function resumeLesson() {
+    if (readOnly || busy || isFinished) return;
+    await updateLesson({ status: "running" }, "Aula retomada.");
+  }
+
+
+  const evaluationItems = [
+    { key: "attention", label: "Atenção", description: "Mantém foco e acompanha as informações relevantes." },
+    { key: "risk_perception", label: "Percepção de risco", description: "Identifica riscos e antecipa situações de perigo." },
+    { key: "decision_making", label: "Tomada de decisão", description: "Escolhe respostas adequadas diante das situações." },
+    { key: "vehicle_control", label: "Controle do veículo", description: "Executa comandos e mantém domínio do veículo." },
+    { key: "behavior", label: "Comportamento", description: "Demonstra postura segura, responsável e adequada." },
+  ];
+
+  const hsiItems = [
+    { key: "decision", label: "Decisão", description: "Analisa alternativas e escolhe respostas seguras." },
+    { key: "organization", label: "Organização", description: "Planeja e organiza a execução da atividade." },
+    { key: "time", label: "Tempo", description: "Mantém ritmo, antecipação e tempo de resposta adequados." },
+    { key: "humanization", label: "Humanização", description: "Demonstra empatia, respeito e responsabilidade coletiva." },
+    { key: "psychocomportamental", label: "Psicocomportamental", description: "Demonstra autorregulação e comportamento preventivo." },
+  ];
+
+  const evaluationComplete = evaluationItems.every(
+    (item) => Number(evaluation[item.key]) >= 1 && Number(evaluation[item.key]) <= 5
+  );
+  const hsiComplete = hsiItems.every(
+    (item) => Number(hsiEvaluation[item.key]) >= 1 && Number(hsiEvaluation[item.key]) <= 5
+  );
+
+  const evaluationAverage = evaluationComplete
+    ? evaluationItems.reduce((sum, item) => sum + Number(evaluation[item.key]), 0) / evaluationItems.length
+    : null;
+
+  const pedagogicalAnalysis = buildPedagogicalAnalysis(evaluationItems, evaluation);
+
+  function setEvaluationValue(key, value) {
+    if (readOnly || busy) return;
+    setEvaluation((current) => ({
+      ...current,
+      [key]: Number(value),
+    }));
+  }
+
+  function setHsiValue(key, value) {
+    if (readOnly || busy) return;
+    setHsiEvaluation((current) => ({ ...current, [key]: Number(value) }));
+  }
+
+  const hsiAverage = hsiComplete
+    ? hsiItems.reduce((sum, item) => sum + Number(hsiEvaluation[item.key]), 0) / hsiItems.length
+    : null;
+
+  async function completeLesson() {
+    if (readOnly || busy || isFinished) return;
+
+    if (currentPhase !== 5) {
+      setMessage("A aula só pode ser concluída após a fase 5 — Parada Segura.");
+      return;
+    }
+
+    if (!evaluationComplete) {
+      setMessage("Preencha todos os itens da avaliação andragógica antes de concluir a aula.");
+      return;
+    }
+
+    if (!hsiComplete) {
+      setMessage("Preencha todos os cinco fatores do HSI-DOTH-P antes de concluir a aula.");
+      return;
+    }
+
+    if (kmFinal === "") {
+      setMessage("Informe o KM final antes de concluir a aula.");
+      return;
+    }
+
+    const initialKm = Number(currentLesson.km_start);
+    const finalKm = Number(kmFinal);
+
+    if (!Number.isFinite(finalKm)) {
+      setMessage("O KM final deve ser numérico.");
+      return;
+    }
+
+    if (Number.isFinite(initialKm) && finalKm < initialKm) {
+      setMessage("O KM final não pode ser menor que o KM inicial.");
+      return;
+    }
+
+    const endedAt = new Date().toISOString();
+    const duration = currentLesson.started_at
+      ? Math.max(
+          0,
+          Math.round(
+            (new Date(endedAt).getTime() - new Date(currentLesson.started_at).getTime()) / 60000
+          )
+        )
+      : null;
+
+    const pedagogicalEvaluation = {
+      ...evaluation,
+      average: Number(evaluationAverage.toFixed(2)),
+      scale: "1-5",
+      classification: pedagogicalAnalysis.classification,
+      strengths: pedagogicalAnalysis.strengths,
+      development: pedagogicalAnalysis.development,
+      priorities: pedagogicalAnalysis.priorities,
+      diagnosis: pedagogicalAnalysis.diagnosis,
+      next_lesson_recommendation: pedagogicalAnalysis.next_lesson_recommendation,
+      next_lesson_objective: pedagogicalAnalysis.next_lesson_objective,
+      completed_at: endedAt,
+    };
+
+    const evaluationNote = `[AVALIAÇÃO ANDRAGÓGICA] ${JSON.stringify(pedagogicalEvaluation)}`;
+    const hsiPayload = {
+      scores: hsiItems.reduce((acc, item) => ({ ...acc, [item.key]: Number(hsiEvaluation[item.key]) }), {}),
+      average: Number(hsiAverage.toFixed(2)),
+      normalized_score: Number((hsiAverage * 20).toFixed(0)),
+      classification: hsiAverage >= 4.2 ? "ALTO" : hsiAverage >= 3.4 ? "ADEQUADO" : hsiAverage >= 2.6 ? "ATENÇÃO" : "CRÍTICO",
+      completed_at: endedAt,
+    };
+    const hsiNote = `[HSI-DOTH-P] ${JSON.stringify(hsiPayload)}`;
+    const mergedNotes = [notes, evaluationNote, hsiNote]
+      .filter(Boolean)
+      .join("\n\n");
+
+    const patch = {
+      phase: 5,
+      status: "completed",
+      km_end: finalKm,
+      ended_at: endedAt,
+      duration_minutes: duration,
+      notes: mergedNotes || null,
+    };
+
+    const updated = await updateLesson(patch);
+
+    if (updated) {
+      // Baixa uma aula somente na categoria realmente ministrada.
+      if (updated.cnh_category) {
+        const { data: planData, error: planReadError } = await supabase
+          .from("ai_student_category_plans")
+          .select("id, planned_lessons, completed_lessons, service_contract_item_id")
+          .eq("user_id", user.id)
+          .eq("student_id", updated.student_id)
+          .eq("cnh_category", String(updated.cnh_category).toUpperCase())
+          .maybeSingle();
+
+        if (!planReadError && planData) {
+          const completed = Math.min(
+            Number(planData.planned_lessons || 0),
+            Number(planData.completed_lessons || 0) + 1
+          );
+          const { error: planUpdateError } = await supabase
+            .from("ai_student_category_plans")
+            .update({ completed_lessons: completed })
+            .eq("id", planData.id)
+            .eq("user_id", user.id);
+          if (planUpdateError) console.warn("Não foi possível atualizar a quantidade concluída da categoria:", planUpdateError);
+
+          if (planData.service_contract_item_id) {
+            const { error: itemUpdateError } = await supabase
+              .from("ai_service_contract_items")
+              .update({ completed_lessons: completed })
+              .eq("id", planData.service_contract_item_id)
+              .eq("user_id", user.id);
+            if (itemUpdateError) console.warn("Não foi possível atualizar o item do contrato:", itemUpdateError);
+          }
+        }
+      }
+
+      const rpaUpdate = {
+        latest_lesson_id: updated.id,
+        total_lessons: Number(updated.lesson_number || 1),
+        latest_quality_score: Number((evaluationAverage * 20).toFixed(2)),
+        latest_hsi_score: Number((hsiAverage * 20).toFixed(2)),
+        latest_average: Number(evaluationAverage.toFixed(2)),
+        latest_evaluation: pedagogicalEvaluation,
+        continuity_plan: pedagogicalAnalysis.next_lesson_recommendation || null,
+        latest_notes: notes || null,
+        status: "EM_FORMACAO",
+        updated_at: new Date().toISOString()
+      };
+
+      let { error: rpaError } = await supabase
+        .from("ai_rpa_reports")
+        .update(rpaUpdate)
+        .eq("user_id", user.id)
+        .eq("student_id", updated.student_id);
+
+      // Compatibilidade com bancos ainda não migrados: preserva a evolução
+      // nos campos estruturais já existentes e não bloqueia a conclusão da aula.
+      if (rpaError) {
+        const fallbackNotes = [
+          notes || null,
+          `[AVALIAÇÃO ANDRAGÓGICA] ${JSON.stringify(pedagogicalEvaluation)}`,
+          `[HSI-DOTH-P] ${JSON.stringify({ scores: hsiEvaluation, average: Number(hsiAverage.toFixed(2)), normalized_score: Number((hsiAverage * 20).toFixed(0)) })}`
+        ].filter(Boolean).join("\n");
+        const fallback = {
+          latest_lesson_id: updated.id,
+          total_lessons: Number(updated.lesson_number || 1),
+          latest_notes: fallbackNotes,
+          continuity_plan: pedagogicalAnalysis.next_lesson_recommendation || null,
+          status: "EM_FORMACAO",
+          updated_at: new Date().toISOString()
+        };
+        const retry = await supabase
+          .from("ai_rpa_reports")
+          .update(fallback)
+          .eq("user_id", user.id)
+          .eq("student_id", updated.student_id);
+        rpaError = retry.error;
+      }
+
+      if (rpaError) {
+        console.warn("Aula concluída, mas não foi possível atualizar o RPA:", rpaError);
+      }
+    }
+
+    if (updated && onCompleted) {
+      onCompleted(updated);
+    }
+  }
+
+  const distance =
+    currentLesson?.km_start != null && kmFinal !== ""
+      ? Number(kmFinal) - Number(currentLesson.km_start)
+      : null;
+
+  return (
     <div>
-      <div className="panel" style={{position:"sticky",top:0,zIndex:20,padding:"14px 18px",marginBottom:"12px",background:"rgba(255,255,255,.98)",border:"1px solid #dfe7f2",boxShadow:"0 5px 16px rgba(20,50,80,.08)"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"12px",flexWrap:"wrap"}}>
-          <div><div style={{fontSize:"10px",fontWeight:900,letterSpacing:".08em",color:"#52708f"}}>AULAS / {readOnly ? "VISUALIZAÇÃO" : "AULA EM ANDAMENTO"}</div><h1 style={{margin:"3px 0 0",fontSize:"24px"}}>{readOnly ? "Visualização da aula" : "Aula em andamento"}</h1></div>
-          {!readOnly && !isFinished ? <div style={{display:"flex",gap:"7px",alignItems:"center",flexWrap:"wrap"}}><RefreshButton />{status === "paused" ? <button type="button" onClick={resumeLesson} disabled={busy}>▶ RETOMAR</button> : <button type="button" onClick={pauseLesson} disabled={busy}>⏸ PAUSAR</button>}<button type="button" onClick={advancePhase} disabled={busy || status === "paused" || currentPhase >= 5} style={{fontWeight:900}}>{currentPhase >= 5 ? "FASE 5 — FINALIZAR" : "✓ AVANÇAR →"}</button></div> : <button type="button" onClick={onBack}>VOLTAR</button>}
+      <div className="panel" style={{
+        background: "linear-gradient(135deg, #f7faff 0%, #ffffff 70%)",
+        border: "1px solid #dfe7f2"
+      }}>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "16px",
+          flexWrap: "wrap"
+        }}>
+          <div>
+            <div style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", opacity: 0.65 }}>
+              AULAS / {readOnly ? "VISUALIZAÇÃO" : "AULA EM ANDAMENTO"}
+            </div>
+            <h1 style={{ marginBottom: "6px" }}>{readOnly ? "Visualização da aula" : "Aula em andamento"}</h1>
+            <p style={{ margin: 0 }}>
+              {readOnly ? "Consulta somente leitura dos registros da aula." : "Siga as fases na ordem e finalize com a avaliação andragógica."}
+            </p>
+          </div>
+          {!readOnly && !isFinished ? (
+            <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
+              <RefreshButton />
+              {status === "paused" ? (
+                <button type="button" onClick={resumeLesson} disabled={busy}>
+                  ▶ RETOMAR AULA
+                </button>
+              ) : (
+                <button type="button" onClick={pauseLesson} disabled={busy}>
+                  ⏸ PAUSAR
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={advancePhase}
+                disabled={busy || status === "paused" || currentPhase >= 5}
+                title={currentPhase >= 5 ? "A aula já está na última fase." : "Concluir a fase atual e avançar"}
+                style={{fontWeight:900}}
+              >
+                {currentPhase >= 5 ? "FASE 5 — PARADA SEGURA" : "✓ CONCLUIR FASE E AVANÇAR →"}
+              </button>
+            </div>
+          ) : (
+            <button type="button" onClick={onBack}>VOLTAR</button>
+          )}
         </div>
       </div>
-      <div className="panel" style={{padding:"10px 14px",marginBottom:"12px"}}><div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(100px,1fr))",gap:"5px"}}>
-        {[["ALUNO",currentLesson?.ai_students?.full_name || currentLesson?.student_name || "—"],["VEÍCULO",currentLesson?.ai_vehicles ? (currentLesson.ai_vehicles.brand || "")+" "+(currentLesson.ai_vehicles.model || "") : "—"],["STATUS",status === "completed" ? "CONCLUÍDA" : status === "paused" ? "PAUSADA" : "EM ANDAMENTO"],["KM INICIAL",currentLesson?.km_start ?? "—"],["DURAÇÃO",elapsedMinutes() != null ? elapsedMinutes()+" min" : "—"]].map(([label,value]) => <div key={label} style={{padding:"6px 9px",borderRight:"1px solid #e5ebf2"}}><div style={{fontSize:"9px",fontWeight:800,color:"#718096"}}>{label}</div><div style={{marginTop:"3px",fontWeight:800,fontSize:"12px"}}>{value}</div></div>)}
-      </div></div>
-      <div className="panel" style={{padding:"16px",marginBottom:"12px"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px",marginBottom:"10px"}}><div><h2 style={{margin:"0 0 3px",fontSize:"18px"}}>Progresso da aula</h2><p style={{margin:0,fontSize:"11px",color:"#6b7785"}}>Fase {currentPhase} de 5 — {lessonPhaseLabel(currentPhase)}</p></div><span style={{fontSize:"10px",fontWeight:900,padding:"6px 9px",borderRadius:"999px",background:"#eef6ff",color:"#1b5fa7"}}>{currentPhase === 5 ? "PARADA SEGURA" : "EM ANDAMENTO"}</span></div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(5,minmax(90px,1fr))",gap:"6px"}}>{LESSON_PHASES.map(phase => { const pc=getLessonPhaseClass(phase.id,currentPhase,status); const active=pc==="current"; const done=pc==="completed"; return <div key={phase.id} style={{padding:"9px 8px",borderRadius:"8px",border:"1px solid "+(active?"#f2b94b":done?"#8bc99a":"#e3a0a8"),background:active?"#fff9e8":done?"#f1faf3":"#fff3f4",color:active?"#8a5a00":done?"#216b35":"#b4232d"}}><div style={{fontSize:"9px",fontWeight:900}}>FASE {phase.id}</div><div style={{fontSize:"11px",fontWeight:900,marginTop:"3px"}}>{phase.label}</div><div style={{fontSize:"9px",marginTop:"3px"}}>{done?"✓ CONCLUÍDA":active?"● ATUAL":"○ PRÓXIMA"}</div></div>; })}</div>
+
+      <div className="panel">
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(5, minmax(120px, 1fr))",
+          gap: "10px"
+        }}>
+          {[
+            ["ALUNO", currentLesson?.ai_students?.full_name || currentLesson?.student_name || "Aluno selecionado"],
+            ["VEÍCULO", currentLesson?.ai_vehicles ? `${currentLesson.ai_vehicles.brand || ""} ${currentLesson.ai_vehicles.model || ""}`.trim() : "Veículo selecionado"],
+            ["STATUS", status === "completed" ? "CONCLUÍDA" : status === "paused" ? "PAUSADA" : "EM ANDAMENTO"],
+            ["KM INICIAL", currentLesson?.km_start ?? "—"],
+            ["DURAÇÃO", elapsedMinutes() != null ? `${elapsedMinutes()} min` : "—"]
+          ].map(([label, value]) => (
+            <div key={label} style={{
+              padding: "12px",
+              border: "1px solid #e1e7ef",
+              borderRadius: "10px",
+              background: "#fbfcfe"
+            }}>
+              <div style={{ fontSize: "10px", fontWeight: 800, opacity: 0.6 }}>{label}</div>
+              <div style={{ marginTop: "5px", fontWeight: 800, fontSize: "13px" }}>{value}</div>
+            </div>
+          ))}
+        </div>
+            </div>
+
+      <div
+        className="panel"
+        style={{
+          position: "sticky",
+          top: "0",
+          zIndex: 20,
+          marginBottom: "12px",
+          padding: "12px 14px",
+          background: "rgba(255,255,255,.97)",
+          backdropFilter: "blur(8px)",
+          border: "1px solid #cfdceb",
+          boxShadow: "0 8px 22px rgba(20,50,80,.10)"
+        }}
+      >
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "12px",
+          flexWrap: "wrap"
+        }}>
+          <div>
+            <div style={{fontSize:"10px",fontWeight:900,letterSpacing:".08em",color:"#52708f"}}>CONTROLES DA AULA</div>
+            <div style={{fontSize:"13px",fontWeight:900,color:"#18345f",marginTop:"3px"}}>
+              Fase {currentPhase} — {lessonPhaseLabel(currentPhase)}
+            </div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:"8px",flexWrap:"wrap"}}>
+            <RefreshButton />
+            {status === "paused" ? (
+              <button type="button" onClick={resumeLesson} disabled={busy}>
+                ▶ RETOMAR AULA
+              </button>
+            ) : (
+              <button type="button" onClick={pauseLesson} disabled={busy || isFinished}>
+                ⏸ PAUSAR
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={advancePhase}
+              disabled={busy || status === "paused" || currentPhase >= 5 || isFinished}
+              style={{
+                fontWeight:900,
+                minWidth:"220px",
+                background: currentPhase >= 5 ? "#e9eef4" : "#176fc1",
+                color: currentPhase >= 5 ? "#66778a" : "#fff"
+              }}
+            >
+              {currentPhase >= 5 ? "FASE 5 — PARADA SEGURA" : "✓ CONCLUIR FASE E AVANÇAR →"}
+            </button>
+          </div>
+        </div>
+        <div style={{
+          marginTop:"9px",
+          padding:"8px 10px",
+          borderRadius:"8px",
+          background:"#f5f9fe",
+          border:"1px solid #dbe7f4",
+          fontSize:"11px",
+          color:"#52657a"
+        }}>
+          {currentPhase < 5
+            ? "Conclua a fase atual para liberar a próxima."
+            : "Na Parada Segura, complete a avaliação, informe o KM final e conclua a aula."}
+        </div>
       </div>
-      <div className="panel" style={{padding:"16px",marginBottom:"12px"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px",flexWrap:"wrap"}}><div><h2 style={{margin:"0 0 3px",fontSize:"18px"}}>Avaliação andragógica</h2><p style={{margin:0,fontSize:"11px",color:"#6b7785"}}>Avalie os cinco fatores de 1 a 5.</p></div><span style={{fontSize:"10px",fontWeight:900,padding:"6px 9px",borderRadius:"8px",background:evaluationComplete?"#eaf7ed":"#fff8e1",color:evaluationComplete?"#216b35":"#8a5a00"}}>{evaluationComplete ? "MÉDIA "+evaluationAverage.toFixed(2)+" / 5" : "PREENCHIMENTO PENDENTE"}</span></div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:"7px",marginTop:"10px"}}>{evaluationItems.map(item => <div key={item.key} style={{display:"grid",gridTemplateColumns:"1fr auto",gap:"8px",alignItems:"center",border:"1px solid #e0e6ee",borderRadius:"8px",padding:"8px"}}><div><div style={{fontWeight:800,fontSize:"12px"}}>{item.label}</div><div style={{fontSize:"9px",color:"#718096",marginTop:"2px"}}>{item.description}</div></div><div style={{display:"flex",gap:"3px"}}>{[1,2,3,4,5].map(value => {const selected=Number(evaluation[item.key])===value;return <button key={value} type="button" onClick={()=>setEvaluationValue(item.key,value)} disabled={readOnly||busy||isFinished} style={{width:"29px",minWidth:"29px",height:"29px",padding:0,borderRadius:"6px",border:selected?"2px solid #2457a6":"1px solid #ccd4df",background:selected?"#e8f0ff":"#fff",fontWeight:selected?800:600}}>{value}</button>;})}</div></div>)}</div>
-        {evaluationComplete && <div style={{marginTop:"9px",padding:"9px",background:"#f7faff",border:"1px solid #dfe7f2",borderRadius:"8px",fontSize:"11px"}}><strong>Diagnóstico:</strong> {pedagogicalAnalysis.diagnosis}</div>}
+
+div>
+
+      <div className="panel">
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "12px",
+          flexWrap: "wrap"
+        }}>
+          <div>
+            <h2 style={{ marginBottom: "4px" }}>Progresso da aula</h2>
+            <p style={{ marginTop: 0 }}>A fase amarela é a atual; verde indica concluída; vermelho indica a próxima.</p>
+          </div>
+          <div style={{
+            padding: "8px 12px",
+            borderRadius: "999px",
+            background: "#fff8e1",
+            border: "1px solid #ffe082",
+            fontSize: "11px",
+            fontWeight: 800
+          }}>
+            FASE {currentPhase} DE 5
+          </div>
+        </div>
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(5, minmax(125px, 1fr))",
+          gap: "8px",
+          overflowX: "auto",
+          paddingBottom: "4px"
+        }}>
+          {LESSON_PHASES.map((phase) => {
+            const phaseClass = getLessonPhaseClass(phase.id, currentPhase, status);
+            const styles = {
+              completed: { background: "#e8f5e9", border: "2px solid #66bb6a", color: "#1b5e20" },
+              current: { background: "#fff8e1", border: "2px solid #f9a825", color: "#8a5a00" },
+              next: { background: "#ffebee", border: "2px solid #ef9a9a", color: "#b71c1c" }
+            };
+            return (
+              <div key={phase.id} style={{
+                ...styles[phaseClass],
+                borderRadius: "10px",
+                padding: "12px",
+                minWidth: "125px"
+              }}>
+                <div style={{ fontSize: "10px", fontWeight: 800 }}>FASE {phase.id}</div>
+                <div style={{ marginTop: "4px", fontWeight: 800, fontSize: "12px" }}>{phase.label}</div>
+                <div style={{ marginTop: "4px", fontSize: "10px" }}>
+                  {phaseClass === "completed" ? "✓ CONCLUÍDA" : phaseClass === "current" ? "● ATUAL" : "○ PRÓXIMA"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+}
       </div>
-      <div className="panel" style={{padding:"16px",marginBottom:"12px"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px",flexWrap:"wrap"}}><div><h2 style={{margin:"0 0 3px",fontSize:"18px"}}>HSI-DOTH-P</h2><p style={{margin:0,fontSize:"11px",color:"#6b7785"}}>Registre os cinco fatores em escala de 1 a 5.</p></div><span style={{fontSize:"10px",fontWeight:900}}>{hsiComplete ? "HSI "+(hsiAverage*20).toFixed(1)+" / 100" : "PREENCHIMENTO PENDENTE"}</span></div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:"7px",marginTop:"10px"}}>{hsiItems.map(item => <div key={item.key} style={{display:"grid",gridTemplateColumns:"1fr auto",gap:"8px",alignItems:"center",border:"1px solid #d8e4f4",borderRadius:"8px",padding:"8px"}}><div><div style={{fontWeight:800,fontSize:"12px"}}>{item.label}</div><div style={{fontSize:"9px",color:"#718096",marginTop:"2px"}}>{item.description}</div></div><div style={{display:"flex",gap:"3px"}}>{[1,2,3,4,5].map(value => {const selected=Number(hsiEvaluation[item.key])===value;return <button key={value} type="button" onClick={()=>setHsiValue(item.key,value)} disabled={readOnly||busy||isFinished} style={{width:"29px",minWidth:"29px",height:"29px",padding:0,borderRadius:"6px",border:selected?"2px solid #2457a6":"1px solid #ccd4df",background:selected?"#e8f0ff":"#fff",fontWeight:selected?800:600}}>{value}</button>;})}</div></div>)}</div>
+
+      <div className="panel">
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "12px",
+          flexWrap: "wrap"
+        }}>
+          <div>
+            <h2 style={{ marginBottom: "4px" }}>Avaliação andragógica</h2>
+            <p style={{ marginTop: 0 }}>Avalie os cinco fatores de 1 a 5. Este resultado alimenta o diagnóstico da aula.</p>
+          </div>
+          <div style={{
+            padding: "9px 13px",
+            borderRadius: "10px",
+            background: evaluationComplete ? "#e8f5e9" : "#fff8e1",
+            color: evaluationComplete ? "#1b5e20" : "#8a5a00",
+            border: evaluationComplete ? "1px solid #a5d6a7" : "1px solid #ffe082",
+            fontWeight: 800,
+            fontSize: "12px"
+          }}>
+            {evaluationComplete ? `MÉDIA ${evaluationAverage.toFixed(2)} / 5` : "PREENCHIMENTO PENDENTE"}
+          </div>
+        </div>
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+          gap: "8px"
+        }}>
+          {evaluationItems.map((item) => (
+            <div key={item.key} style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(150px, 1fr) auto",
+              alignItems: "center",
+              gap: "10px",
+              border: "1px solid #dfe5ec",
+              borderRadius: "9px",
+              padding: "9px 10px",
+              background: "#fff"
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: "12px" }}>{item.label}</div>
+                <div style={{
+                  fontSize: "10px",
+                  opacity: 0.65,
+                  marginTop: "3px",
+                  lineHeight: 1.25
+                }}>{item.description}</div>
+              </div>
+
+              <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                {[1,2,3,4,5].map((value) => {
+                  const selected = Number(evaluation[item.key]) === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-label={`${item.label}: nota ${value}`}
+                      onClick={() => setEvaluationValue(item.key, value)}
+                      disabled={readOnly || busy || isFinished}
+                      style={{
+                        width: "30px",
+                        minWidth: "30px",
+                        height: "30px",
+                        padding: 0,
+                        borderRadius: "7px",
+                        border: selected ? "2px solid #2457a6" : "1px solid #ccd4df",
+                        background: selected ? "#e8f0ff" : "#fff",
+                        color: "#18345f",
+                        fontWeight: selected ? 800 : 600
+                      }}
+                    >{value}</button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {evaluationComplete && (
+          <div style={{
+            marginTop: "12px",
+            display: "grid",
+            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+            gap: "12px"
+          }}>
+            <div style={{ border: "1px solid #dfe5ec", borderRadius: "10px", padding: "13px", background: "#fbfcfe" }}>
+              <div style={{ fontWeight: 800 }}>Diagnóstico da aula</div>
+              <div style={{ marginTop: "7px", fontSize: "12px", lineHeight: 1.5 }}>
+                <strong>{pedagogicalAnalysis.classification.label}</strong>{" — "}{pedagogicalAnalysis.diagnosis}
+              </div>
+            </div>
+            <div style={{ border: "1px solid #dfe5ec", borderRadius: "10px", padding: "13px", background: "#fbfcfe" }}>
+              <div style={{ fontWeight: 800 }}>Preparar próxima aula</div>
+              <div style={{ marginTop: "7px", fontSize: "12px", lineHeight: 1.5 }}>{pedagogicalAnalysis.next_lesson_recommendation}</div>
+              <div style={{ marginTop: "8px", paddingTop: "8px", borderTop: "1px solid #edf0f4", fontSize: "12px" }}>
+                <strong>Objetivo:</strong> {pedagogicalAnalysis.next_lesson_objective}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-      <div className="panel" style={{padding:"16px",marginBottom:"12px"}}><h2 style={{margin:"0 0 3px",fontSize:"18px"}}>Parada segura</h2><p style={{margin:"0 0 10px",fontSize:"11px",color:"#6b7785"}}>Na fase 5, informe o KM final e conclua a aula.</p><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px"}}><div><label>KM final</label><input type="number" min={currentLesson?.km_start ?? 0} step="0.1" value={kmFinal} onChange={e=>setKmFinal(e.target.value)} disabled={readOnly||busy||isFinished}/></div><div><label>Distância</label><div style={{padding:"10px 12px",border:"1px solid #ddd",borderRadius:"6px",background:"#fbfcfe"}}>{Number.isFinite(distance)?distance.toFixed(1)+" km":"—"}</div></div></div><div style={{marginTop:"9px"}}><label>Observações</label><textarea rows="3" value={notes} onChange={e=>setNotes(e.target.value)} disabled={readOnly||busy||isFinished}/></div>{!readOnly&&<div style={{display:"flex",justifyContent:"flex-end",marginTop:"10px"}}><button type="button" onClick={completeLesson} disabled={busy||isFinished||status==="paused"||currentPhase!==5}>CONCLUIR AULA</button></div>}</div>
+
+      <div className="panel" style={{ background: "#f7faff" }}>
+        <h2>HSI-DOTH-P — avaliação da aula</h2>
+        <p style={{ marginTop: 0 }}>Registre os cinco fatores do HSI-DOTH-P em escala de 1 a 5. O resultado será incorporado ao RPA ÚNICO e ao dashboard.</p>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+          gap: "8px"
+        }}>
+          {hsiItems.map(item => (
+            <div key={item.key} style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(160px, 1fr) auto",
+              alignItems: "center",
+              gap: "10px",
+              padding: "9px 10px",
+              border: "1px solid #d8e4f4",
+              borderRadius: "9px",
+              background: "#fff"
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <strong style={{ fontSize: "12px" }}>{item.label}</strong>
+                <div style={{ fontSize: "10px", opacity: 0.68, marginTop: "3px", lineHeight: 1.25 }}>
+                  {item.description}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                {[1,2,3,4,5].map(value => {
+                  const selected = Number(hsiEvaluation[item.key]) === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-label={`${item.label}: nota ${value}`}
+                      onClick={() => setHsiValue(item.key, value)}
+                      disabled={readOnly || busy || isFinished}
+                      style={{
+                        width: "30px",
+                        minWidth: "30px",
+                        height: "30px",
+                        padding: 0,
+                        borderRadius: "7px",
+                        border: selected ? "2px solid #2457a6" : "1px solid #ccd4df",
+                        background: selected ? "#e8f0ff" : "#fff",
+                        color: "#18345f",
+                        fontWeight: selected ? 800 : 600
+                      }}
+                    >{value}</button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: "10px", fontWeight: 800 }}>
+          {hsiComplete ? `Indicador HSI-DOTH-P: ${(hsiAverage * 20).toFixed(1)} / 100` : "Preenchimento pendente"}
+        </div>
+      </div>
+
+      <div className="panel">
+        <h2 style={{ marginBottom: "4px" }}>Finalização da aula</h2>
+        <p style={{ marginTop: 0 }}>Na Parada Segura, informe o KM final e registre observações.</p>
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+          gap: "14px"
+        }}>
+          <div>
+            <label>KM final</label>
+            <input
+              type="number"
+              min={currentLesson?.km_start ?? 0}
+              step="0.1"
+              value={kmFinal}
+              onChange={(e) => setKmFinal(e.target.value)}
+              disabled={readOnly || busy || isFinished}
+            />
+          </div>
+          <div>
+            <label>Distância percorrida</label>
+            <div style={{
+              padding: "10px 12px",
+              border: "1px solid #ddd",
+              borderRadius: "6px",
+              minHeight: "20px",
+              background: "#fbfcfe"
+            }}>
+              {Number.isFinite(distance) ? `${distance.toFixed(1)} km` : "—"}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: "12px" }}>
+          <label>Observações da aula</label>
+          <textarea rows="4" value={notes} onChange={(e) => setNotes(e.target.value)} disabled={readOnly || busy || isFinished} />
+        </div>
+
+        {!readOnly && (
+          <div style={{ marginTop: "14px", display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={completeLesson}
+              disabled={busy || isFinished || status === "paused" || currentPhase !== 5}
+            >
+              CONCLUIR AULA
+            </button>
+          </div>
+        )}
+
+        {isFinished && <p style={{ marginTop: "12px" }}>Esta aula está encerrada e não pode ser alterada por esta tela.</p>}
+      </div>
+
       {message && <div className="panel"><p className="msg">{message}</p></div>}
     </div>
   );
 }
+
 function LessonHistory({ user, onBack, onSelect }) {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
