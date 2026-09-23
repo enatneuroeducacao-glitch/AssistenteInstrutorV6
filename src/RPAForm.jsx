@@ -28,21 +28,31 @@ function parseEvaluationText(value) {
   }
 }
 
-function buildReadableSynthesis(value) {
-  const data = parseEvaluationText(value);
-  if (!data) return "A avaliação registrada ainda não possui uma síntese textual estruturada.";
-  const label = data.classification?.label || "Avaliação registrada";
-  const average = data.average != null ? `${Number(data.average).toFixed(1)}/5` : "—";
-  const strengths = Array.isArray(data.strengths) && data.strengths.length
-    ? data.strengths.map((x) => `${x.label || x.key} (${x.score}/5)`).join(", ")
-    : "Nenhum ponto forte registrado.";
-  const development = Array.isArray(data.development) && data.development.length
-    ? data.development.map((x) => `${x.label || x.key} (${x.score}/5)`).join(", ")
-    : "Nenhum ponto de desenvolvimento registrado.";
-  return `Classificação: ${label}
-Média: ${average}
-Pontos fortes: ${strengths}
-Pontos de desenvolvimento: ${development}`;
+function buildAutomaticSynthesis(lessons, report, student) {
+  const completed = (lessons || []).filter((item) => String(item.status || "").toLowerCase() === "completed");
+  const evaluation = report?.latest_evaluation || parseEvaluationText(report?.latest_notes || "");
+  if (!completed.length && !evaluation) return "A síntese será gerada automaticamente após a realização das aulas e o registro das avaliações.";
+
+  const first = completed[0];
+  const last = completed[completed.length - 1];
+  const kmStart = first?.km_start;
+  const kmEnd = last?.km_end;
+  const kmText = kmStart != null && kmEnd != null ? ` O acompanhamento registra evolução de ${kmStart} km para ${kmEnd} km.` : "";
+
+  if (!evaluation) {
+    return `${student?.full_name || "O aluno"} possui ${completed.length} aula(s) concluída(s).${kmText} Ainda não há avaliação andragógica registrada para gerar uma síntese de desempenho.`;
+  }
+
+  const label = evaluation.classification?.label || "Avaliação registrada";
+  const average = evaluation.average != null ? `${Number(evaluation.average).toFixed(1)}/5` : "—";
+  const strengths = Array.isArray(evaluation.strengths) && evaluation.strengths.length
+    ? evaluation.strengths.map((x) => `${x.label || x.key} (${x.score}/5)`).join(", ")
+    : "não há pontos fortes destacados";
+  const priorities = Array.isArray(evaluation.priorities) && evaluation.priorities.length
+    ? evaluation.priorities.map((x) => `${x.label || x.key} (${x.score}/5)`).join(", ")
+    : "não há prioridades registradas";
+
+  return `${student?.full_name || "O aluno"} concluiu ${completed.length} aula(s) no acompanhamento.${kmText} Na avaliação mais recente, apresenta classificação ${label}, com média ${average}. Ponto forte: ${strengths}. Prioridades de desenvolvimento: ${priorities}. Esta síntese é atualizada automaticamente a partir das aulas e da avaliação mais recente.`;
 }
 
 export default function RPAForm({ user, onBack }) {
@@ -95,7 +105,7 @@ export default function RPAForm({ user, onBack }) {
         setLessons((lessonsData || []).filter((item) => String(item.status || "").toLowerCase() !== "exam_scheduled"));
 
         const report = (reportsData || []).find((item) => String(item.student_id) === String(currentStudent));
-        setSynthesis(buildReadableSynthesis(report?.latest_notes || ""));
+        setSynthesis(buildAutomaticSynthesis((lessonsData || []).filter((item) => String(item.status || "").toLowerCase() !== "exam_scheduled"), report, studentsData?.find((item) => String(item.id) === String(currentStudent))));
         setContinuityPlan(report?.continuity_plan || "");
       } else {
         setLessons([]);
@@ -123,7 +133,7 @@ export default function RPAForm({ user, onBack }) {
   useEffect(() => {
     if (!selectedStudentId || !reports.length) return;
     const report = reports.find((item) => String(item.student_id) === String(selectedStudentId));
-    setSynthesis(buildReadableSynthesis(report?.latest_notes || ""));
+    setSynthesis(buildAutomaticSynthesis(lessons, report, student));
     setContinuityPlan(report?.continuity_plan || "");
   }, [selectedStudentId, reports]);
 
@@ -322,16 +332,16 @@ export default function RPAForm({ user, onBack }) {
                       </div>
                     </div>
                   )}
-                  <label style={{ display: "block" }}><span style={{ fontWeight: 800, color: "#18375d" }}>Síntese do acompanhamento</span><small style={{ ...muted, display: "block", marginTop: "3px" }}>Resumo da evolução do aluno em linguagem clara.</small>
-                    <textarea style={{ width: "100%", minHeight: "96px", boxSizing: "border-box", resize: "vertical", marginTop: "5px" }} rows="4" value={synthesis} onChange={(e) => setSynthesis(e.target.value)} placeholder="Complemento da síntese do acompanhamento." />
-                  </label>
+                  <div style={{ display: "block" }}><span style={{ fontWeight: 800, color: "#18375d" }}>Síntese automática do acompanhamento</span><small style={{ ...muted, display: "block", marginTop: "3px" }}>Gerada automaticamente a partir das aulas concluídas e da avaliação mais recente.</small>
+                    <div style={{ marginTop: "7px", padding: "12px 14px", border: "1px solid #d8e4f4", borderRadius: "10px", background: "#f7faff", color: "#243b5a", fontSize: "13px", lineHeight: 1.55 }}>{synthesis}</div>
+                  </div>
                   <label style={{ display: "block", marginTop: "12px" }}><span style={{ fontWeight: 800, color: "#18375d" }}>Próximas ações</span>
                     <div style={{ minHeight: "76px", width: "100%", boxSizing: "border-box", marginTop: "5px", padding: "10px 12px", border: "1px solid #d8e4f4", borderRadius: "10px", background: "#f7faff", color: "#243b5a", fontSize: "13px", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
                       {continuityPlan || "Plano de continuidade ainda não gerado."}
                     </div>
                   </label>
                   <div style={{ marginTop: "11px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                    <button type="button" onClick={saveRpaNotes} disabled={saving || !report}>{saving ? "SALVANDO..." : "SALVAR RPA"}</button>
+                    <button type="button" onClick={loadRpa}>↻ ATUALIZAR DADOS</button>
                     <button type="button" onClick={printRpa}>IMPRIMIR / PDF</button>
                   </div>
                   {msg && <p className="msg" style={{ marginTop: "9px" }}>{msg}</p>}
