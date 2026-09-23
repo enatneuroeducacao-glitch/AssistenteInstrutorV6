@@ -15,6 +15,21 @@ function formatDate(value) {
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("pt-BR");
 }
+function parseEvaluationText(value) {
+  if (!value) return null;
+  const raw = String(value).replace(/^\s*\[AVALIAÇÃO ANDRAGÓGICA\]\s*/i, "").trim();
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+function buildReadableSynthesis(value) {
+  const data = parseEvaluationText(value);
+  if (!data) return value || "";
+  const label = data.classification?.label || "Avaliação registrada";
+  const average = data.average != null ? `${Number(data.average).toFixed(1)}/5` : "—";
+  const strengths = Array.isArray(data.strengths) ? data.strengths.map((x) => `${x.label || x.key} (${x.score}/5)`).join(", ") : "—";
+  const development = Array.isArray(data.development) ? data.development.map((x) => `${x.label || x.key} (${x.score}/5)`).join(", ") : "—";
+  return `Classificação: ${label}\nMédia: ${average}\nPontos fortes: ${strengths}\nPontos de desenvolvimento: ${development}`;
+}
 
 export default function RPAForm({ user, onBack }) {
   const [students, setStudents] = useState([]);
@@ -66,7 +81,7 @@ export default function RPAForm({ user, onBack }) {
         setLessons((lessonsData || []).filter((item) => String(item.status || "").toLowerCase() !== "exam_scheduled"));
 
         const report = (reportsData || []).find((item) => String(item.student_id) === String(currentStudent));
-        setSynthesis(report?.latest_notes || "");
+        setSynthesis(buildReadableSynthesis(report?.latest_notes || ""));
         setContinuityPlan(report?.continuity_plan || "");
       } else {
         setLessons([]);
@@ -94,7 +109,7 @@ export default function RPAForm({ user, onBack }) {
   useEffect(() => {
     if (!selectedStudentId || !reports.length) return;
     const report = reports.find((item) => String(item.student_id) === String(selectedStudentId));
-    setSynthesis(report?.latest_notes || "");
+    setSynthesis(buildReadableSynthesis(report?.latest_notes || ""));
     setContinuityPlan(report?.continuity_plan || "");
   }, [selectedStudentId, reports]);
 
@@ -286,15 +301,17 @@ export default function RPAForm({ user, onBack }) {
                     <h2 style={{ margin: "3px 0", fontSize: "18px" }}>Síntese e continuidade</h2>
                   </div>
                   {report.latest_evaluation && (
-                    <div style={{ ...metric, marginBottom: "9px" }}>
-                      <strong>Última avaliação</strong>
-                      <span style={{ ...muted, marginLeft: "8px" }}>{report.latest_evaluation.classification?.label || "Avaliação registrada"} — média {report.latest_average ?? "—"}/5</span>
+                    <div style={{ ...metric, marginBottom: "10px", background: "#f7faff" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                        <strong>Última avaliação</strong>
+                        <span style={{ ...muted }}>{report.latest_evaluation.classification?.label || "Avaliação registrada"} · média {report.latest_average ?? "—"}/5</span>
+                      </div>
                     </div>
                   )}
-                  <label>Síntese / observações
+                  <label style={{ display: "block" }}><span style={{ fontWeight: 800, color: "#18375d" }}>Síntese do acompanhamento</span><small style={{ ...muted, display: "block", marginTop: "3px" }}>Resumo da evolução do aluno em linguagem clara.</small>
                     <textarea style={{ width: "100%", minHeight: "96px", boxSizing: "border-box", resize: "vertical", marginTop: "5px" }} rows="4" value={synthesis} onChange={(e) => setSynthesis(e.target.value)} placeholder="Complemento da síntese do acompanhamento." />
                   </label>
-                  <label style={{ marginTop: "9px" }}>Plano de continuidade
+                  <label style={{ display: "block", marginTop: "12px" }}><span style={{ fontWeight: 800, color: "#18375d" }}>Próximas ações</span>
                     <div style={{ minHeight: "76px", width: "100%", boxSizing: "border-box", marginTop: "5px", padding: "10px 12px", border: "1px solid #d8e4f4", borderRadius: "10px", background: "#f7faff", color: "#243b5a", fontSize: "13px", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
                       {continuityPlan || "Plano de continuidade ainda não gerado."}
                     </div>
