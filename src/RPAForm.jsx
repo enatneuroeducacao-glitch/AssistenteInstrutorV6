@@ -17,18 +17,32 @@ function formatDate(value) {
 }
 function parseEvaluationText(value) {
   if (!value) return null;
-  const raw = String(value).replace(/^\s*\[AVALIAÇÃO ANDRAGÓGICA\]\s*/i, "").trim();
-  try { return JSON.parse(raw); } catch { return null; }
+  const text = String(value).trim();
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace < 0 || lastBrace <= firstBrace) return null;
+  try {
+    return JSON.parse(text.slice(firstBrace, lastBrace + 1));
+  } catch {
+    return null;
+  }
 }
 
 function buildReadableSynthesis(value) {
   const data = parseEvaluationText(value);
-  if (!data) return value || "";
+  if (!data) return "A avaliação registrada ainda não possui uma síntese textual estruturada.";
   const label = data.classification?.label || "Avaliação registrada";
   const average = data.average != null ? `${Number(data.average).toFixed(1)}/5` : "—";
-  const strengths = Array.isArray(data.strengths) ? data.strengths.map((x) => `${x.label || x.key} (${x.score}/5)`).join(", ") : "—";
-  const development = Array.isArray(data.development) ? data.development.map((x) => `${x.label || x.key} (${x.score}/5)`).join(", ") : "—";
-  return `Classificação: ${label}\nMédia: ${average}\nPontos fortes: ${strengths}\nPontos de desenvolvimento: ${development}`;
+  const strengths = Array.isArray(data.strengths) && data.strengths.length
+    ? data.strengths.map((x) => `${x.label || x.key} (${x.score}/5)`).join(", ")
+    : "Nenhum ponto forte registrado.";
+  const development = Array.isArray(data.development) && data.development.length
+    ? data.development.map((x) => `${x.label || x.key} (${x.score}/5)`).join(", ")
+    : "Nenhum ponto de desenvolvimento registrado.";
+  return `Classificação: ${label}
+Média: ${average}
+Pontos fortes: ${strengths}
+Pontos de desenvolvimento: ${development}`;
 }
 
 export default function RPAForm({ user, onBack }) {
