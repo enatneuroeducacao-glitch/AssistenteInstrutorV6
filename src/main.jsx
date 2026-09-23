@@ -4886,6 +4886,8 @@ Documento gerado pelo ENAT — Assistente do Instrutor.
   const [agendaLessons, setAgendaLessons] = useState([]);
   const [scheduledLessonToStart, setScheduledLessonToStart] = useState(null);
   const [agendaLoading, setAgendaLoading] = useState(false);
+  const [agendaView, setAgendaView] = useState("hoje");
+  const [agendaSearch, setAgendaSearch] = useState("");
   const [subscription, setSubscription] = useState(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
   const [financeAccounts, setFinanceAccounts] = useState([]);
@@ -6370,11 +6372,6 @@ if (tab === "agenda") {
     .filter(lesson => lesson.exam_scheduled_at)
     .sort((a, b) => new Date(a.exam_scheduled_at) - new Date(b.exam_scheduled_at));
 
-  const [agendaView, setAgendaView] = (() => {
-    const state = React.useState("hoje");
-    return state;
-  })();
-  const [agendaSearch, setAgendaSearch] = React.useState("");
 
   function nomeAlunoAgenda(lesson) {
     const aluno = Array.isArray(lesson.ai_students) ? lesson.ai_students[0] : lesson.ai_students;
