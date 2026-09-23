@@ -29,30 +29,96 @@ function parseEvaluationText(value) {
 }
 
 function buildAutomaticSynthesis(lessons, report, student) {
-  const completed = (lessons || []).filter((item) => String(item.status || "").toLowerCase() === "completed");
-  const evaluation = report?.latest_evaluation || parseEvaluationText(report?.latest_notes || "");
-  if (!completed.length && !evaluation) return "A síntese será gerada automaticamente após a realização das aulas e o registro das avaliações.";
+  const completed = (lessons || [])
+    .filter((item) => String(item.status || "").toLowerCase() === "completed")
+    .sort((a, b) => Number(a.lesson_number || 0) - Number(b.lesson_number || 0));
+
+  const evaluations = completed.map((lesson) => ({
+    lesson,
+    evaluation: parseEvaluationText(lesson.notes || "")
+  })).filter((item) => item.evaluation);
+
+  const latest = evaluations[evaluations.length - 1]?.evaluation || report?.latest_evaluation;
+  const previous = evaluations.length > 1 ? evaluations[evaluations.length - 2].evaluation : null;
+
+  if (!completed.length && !latest) {
+    return "A síntese será gerada automaticamente após a realização das aulas e o registro das avaliações.";
+  }
 
   const first = completed[0];
   const last = completed[completed.length - 1];
   const kmStart = first?.km_start;
   const kmEnd = last?.km_end;
-  const kmText = kmStart != null && kmEnd != null ? ` O acompanhamento registra evolução de ${kmStart} km para ${kmEnd} km.` : "";
+  const kmText = kmStart != null && kmEnd != null
+    ? ` O acompanhamento registra evolução de ${kmStart} km para ${kmEnd} km.`
+    : "";
 
-  if (!evaluation) {
-    return `${student?.full_name || "O aluno"} possui ${completed.length} aula(s) concluída(s).${kmText} Ainda não há avaliação andragógica registrada para gerar uma síntese de desempenho.`;
+  if (!latest) {
+    return `${student?.full_name || "O aluno"} possui ${completed.length} aula(s) concluída(s).${kmText} Ainda não há avaliação andragógica registrada para gerar a análise de desenvolvimento.`;
   }
 
-  const label = evaluation.classification?.label || "Avaliação registrada";
-  const average = evaluation.average != null ? `${Number(evaluation.average).toFixed(1)}/5` : "—";
-  const strengths = Array.isArray(evaluation.strengths) && evaluation.strengths.length
-    ? evaluation.strengths.map((x) => `${x.label || x.key} (${x.score}/5)`).join(", ")
-    : "não há pontos fortes destacados";
-  const priorities = Array.isArray(evaluation.priorities) && evaluation.priorities.length
-    ? evaluation.priorities.map((x) => `${x.label || x.key} (${x.score}/5)`).join(", ")
-    : "não há prioridades registradas";
+  const label = latest.classification?.label || "Avaliação registrada";
+  const average = latest.average != null ? Number(latest.average) : null;
+  const averageText = average != null ? `${average.toFixed(1)}/5` : "—";
 
-  return `${student?.full_name || "O aluno"} concluiu ${completed.length} aula(s) no acompanhamento.${kmText} Na avaliação mais recente, apresenta classificação ${label}, com média ${average}. Ponto forte: ${strengths}. Prioridades de desenvolvimento: ${priorities}. Esta síntese é atualizada automaticamente a partir das aulas e da avaliação mais recente.`;
+  let evolution = "Não foi possível comparar a evolução entre aulas porque ainda não há duas avaliações registradas.";
+  let instructorGuidance = "";
+
+  if (previous && average != null && previous.average != null) {
+    const delta = Number(average) - Number(previous.average);
+    const previousText = Number(previous.average).toFixed(1);
+
+    if (delta > 0.09) {
+      evolution = `EVOLUÇÃO POSITIVA: a média passou de ${previousText}/5 para ${averageText} (+${delta.toFixed(1)} ponto).`;
+    } else if (delta < -0.09) {
+      evolution = `REGRESSÃO: a média passou de ${previousText}/5 para ${averageText} (${delta.toFixed(1)} ponto).`;
+    } else {
+      evolution = `ESTAGNAÇÃO: a média permaneceu praticamente estável em torno de ${averageText}.`;
+    }
+
+    const labels = {
+      attention: "Atenção",
+      risk_perception: "Percepção de risco",
+      decision_making: "Tomada de decisão",
+      vehicle_control: "Controle do veículo",
+      behavior: "Comportamento"
+    };
+    const changes = Object.keys(labels).map((key) => ({
+      label: labels[key],
+      delta: Number(latest[key] ?? 0) - Number(previous[key] ?? 0)
+    })).filter((item) => item.delta !== 0);
+
+    const declines = changes.filter((item) => item.delta < 0).sort((a, b) => a.delta - b.delta);
+    const improvements = changes.filter((item) => item.delta > 0).sort((a, b) => b.delta - a.delta);
+
+    if (delta < -0.09) {
+      const observed = declines.length
+        ? declines.slice(0, 3).map((item) => `${item.label} (${item.delta.toFixed(0)})`).join(", ")
+        : "os fatores avaliados";
+      instructorGuidance = `Na próxima aula, observar especialmente ${observed}, procurando identificar se a queda ocorreu por dificuldade técnica, tomada de decisão, atenção ao ambiente ou autorregulação antes de aumentar a complexidade da atividade.`;
+    } else if (Math.abs(delta) <= 0.09) {
+      const persistent = (latest.development || latest.priorities || [])
+        .slice(0, 3)
+        .map((item) => item.label || item.key)
+        .join(", ");
+      instructorGuidance = `Na próxima aula, observar a consolidação de ${persistent || "os fatores com menor desempenho"}, utilizando situações graduais e verificando se o desempenho se mantém estável antes de avançar a complexidade.`;
+    } else if (declines.length) {
+      instructorGuidance = `Apesar da evolução geral, observar na próxima aula ${declines.slice(0, 2).map((item) => item.label).join(" e ")}, que apresentaram queda na comparação com a aula anterior.`;
+    } else {
+      instructorGuidance = improvements.length
+        ? `Na próxima aula, confirmar a consolidação dos ganhos observados, especialmente em ${improvements.slice(0, 3).map((item) => item.label).join(", ")}.`
+        : "Na próxima aula, confirmar a manutenção do desempenho e avançar gradualmente a complexidade das situações.";
+    }
+  }
+
+  const strengths = Array.isArray(latest.strengths) && latest.strengths.length
+    ? latest.strengths.map((x) => `${x.label || x.key} (${x.score}/5)`).join(", ")
+    : "nenhum ponto forte destacado";
+  const priorities = Array.isArray(latest.priorities) && latest.priorities.length
+    ? latest.priorities.map((x) => `${x.label || x.key} (${x.score}/5)`).join(", ")
+    : "nenhuma prioridade específica registrada";
+
+  return `${student?.full_name || "O aluno"} concluiu ${completed.length} aula(s) no acompanhamento.${kmText} ${evolution} Na avaliação mais recente, apresenta classificação ${label}, com média ${averageText}. Ponto forte: ${strengths}. Prioridades de desenvolvimento: ${priorities}. ${instructorGuidance || "A evolução será comparada automaticamente após a próxima avaliação."}`;
 }
 
 export default function RPAForm({ user, onBack }) {
