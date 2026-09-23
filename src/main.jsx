@@ -5125,7 +5125,7 @@ if (tab === "rpa") {
     }
 
     if (tab === "cursos") {
-      return <CoursesPage user={user} subscriptionActive={subscriptionActive} onNeedSubscription={() => setTab("assinatura")} onBack={() => setTab("dashboard")} />;
+      return <CoursesPage user={user} onBack={() => setTab("dashboard")} />;
     }
 
     if (tab === "assinatura") {
@@ -7030,7 +7030,7 @@ other_annual: (
   );
 }
 
-function CoursesPage({ user, subscriptionActive, onNeedSubscription, onBack }) {
+function CoursesPage({ user, onBack }) {
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [expandedModule, setExpandedModule] = useState(0);
   const [passedAssessments, setPassedAssessments] = useState({});
@@ -7050,10 +7050,6 @@ function CoursesPage({ user, subscriptionActive, onNeedSubscription, onBack }) {
   }
 
   function openCourse(course) {
-    if (!subscriptionActive) {
-      onNeedSubscription?.();
-      return;
-    }
     setSelectedCourse(course);
     setExpandedModule(0);
     setAssessmentIndex(null);
@@ -7501,10 +7497,10 @@ button { background: #55BFEF; border: 0; color: white; padding: 10px 16px; borde
         <div className="panel" style={{ marginTop: 16 }}>
           <h2 style={{ marginTop: 0 }}>Certificação</h2>
           <p style={{ color: "#667780", lineHeight: 1.6 }}>
-            O certificado é liberado somente depois da aprovação em todos os módulos. A emissão gera uma versão pronta para impressão/salvamento em <strong>PDF</strong>, com nome do instrutor, curso, data e identificador do certificado.
+            O certificado é opcional e somente será emitido após a aprovação em todos os módulos e a confirmação do pagamento da taxa de certificação. A emissão gera uma versão pronta para impressão/salvamento em <strong>PDF</strong>, com nome do instrutor, curso, data e identificador do certificado.
           </p>
           {courseCompleted ? (
-            <button type="button" onClick={generateCertificate}>📜 EMITIR CERTIFICADO EM PDF</button>
+            <button type="button" onClick={generateCertificate}>📜 SOLICITAR CERTIFICADO</button>
           ) : (
             <div style={{ padding: 14, borderRadius: 10, background: "#f7fbfe", border: "1px solid #dceff9", color: "#5f6b7a" }}>
               🔒 Complete e aprove todos os módulos para liberar o certificado.
@@ -7533,7 +7529,7 @@ button { background: #55BFEF; border: 0; color: white; padding: 10px 16px; borde
             <small style={{ fontWeight: 800, letterSpacing: ".08em", color: "#55BFEF" }}>ENAT — ASSISTENTE DO INSTRUTOR</small>
             <h1 style={{ margin: "6px 0 8px" }}>Cursos e Desenvolvimento Profissional</h1>
             <p style={{ margin: 0, color: "#5f6b7a", maxWidth: 760, lineHeight: 1.6 }}>
-              Amplie sua formação, aprofunde conhecimentos e desenvolva novas competências para atuar como instrutor de trânsito.
+              Estude gratuitamente. O pagamento é aplicado somente à emissão do certificado, após a conclusão e aprovação na formação.
             </p>
           </div>
           <button className="secondary" type="button" onClick={onBack}>← VOLTAR</button>
@@ -7554,9 +7550,9 @@ button { background: #55BFEF; border: 0; color: white; padding: 10px 16px; borde
             </div>
             <p style={{ color: "#5f6b7a", lineHeight: 1.55, flex: 1 }}>{course.description}</p>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 14 }}>
-              <span style={{ fontSize: 13, color: "#7a8694" }}>{course.modules.length} módulos • avaliação + certificado</span>
+              <span style={{ fontSize: 13, color: "#7a8694" }}>{course.modules.length} módulos • acesso gratuito • certificado opcional</span>
               <button type="button" onClick={() => openCourse(course)} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                {subscriptionActive ? "📖 ACESSAR CURSO" : "🔒 ASSINATURA NECESSÁRIA"}
+                📖 ACESSAR CURSO
               </button>
             </div>
           </div>
