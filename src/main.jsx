@@ -1950,13 +1950,16 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
       .filter(Boolean)
       .join("\n\n");
 
+    // A Parada Segura é registrada no mesmo momento da conclusão:
+    // fase 5 + KM final + horário de encerramento ficam gravados em uma única operação.
+    const paradaSeguraNote = `[PARADA SEGURA] Registrada em ${new Date(endedAt).toLocaleString("pt-BR")} | KM final: ${finalKm}`;
     const patch = {
       phase: 5,
       status: "completed",
       km_end: finalKm,
       ended_at: endedAt,
       duration_minutes: duration,
-      notes: mergedNotes || null,
+      notes: [mergedNotes, paradaSeguraNote].filter(Boolean).join("\n\n"),
     };
 
     const updated = await updateLesson(patch);
@@ -2074,7 +2077,7 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
 
       <div className="panel" style={{padding:"10px 12px",marginBottom:"10px",background:currentPhase===5?"#f4f9ff":"#fff"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"10px"}}><div><div style={{fontSize:"9px",fontWeight:900,color:"#60758c",letterSpacing:".06em"}}>FASE ATUAL</div><div style={{fontSize:"15px",fontWeight:900,color:"#18345f",marginTop:"2px"}}>{lessonPhaseLabel(currentPhase)}</div></div><span style={{fontSize:"10px",fontWeight:900,padding:"5px 8px",borderRadius:"999px",background:status==="paused"?"#fff4d6":"#eaf3ff",color:status==="paused"?"#8a5a00":"#245b96"}}>{status==="paused"?"PAUSADA":`FASE ${currentPhase} DE 5`}</span></div>
-        {currentPhase===5 && <div style={{marginTop:"8px",display:"grid",gridTemplateColumns:"1fr auto",gap:"8px",alignItems:"end"}}><div><label>KM final</label><input type="number" min={currentLesson?.km_start??0} step="0.1" value={kmFinal} onChange={e=>setKmFinal(e.target.value)} disabled={readOnly||busy||isFinished}/></div><button type="button" onClick={completeLesson} disabled={busy||isFinished||status==="paused"} style={{fontWeight:900}}>CONCLUIR AULA</button></div>}
+        {currentPhase===5 && <div style={{marginTop:"8px",display:"grid",gridTemplateColumns:"1fr auto",gap:"8px",alignItems:"end"}}><div><label>KM final</label><input type="number" min={currentLesson?.km_start??0} step="0.1" value={kmFinal} onChange={e=>setKmFinal(e.target.value)} disabled={readOnly||busy||isFinished}/></div><button type="button" onClick={completeLesson} disabled={busy||isFinished||status==="paused"} style={{fontWeight:900}}>REGISTRAR PARADA SEGURA E CONCLUIR AULA</button></div>}
       </div>
 
       <details className="panel" open={currentPhase===4 && !evaluationComplete} style={{padding:"0",marginBottom:"8px"}}>
