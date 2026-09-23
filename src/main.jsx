@@ -486,9 +486,12 @@ function StudentList({ user, onNewStudent, onSelectStudent }) {
             </p>
           </div>
 
-          <button onClick={onNewStudent}>
-            + NOVO ALUNO
-          </button>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+            <RefreshButton />
+            <button onClick={onNewStudent}>
+              + NOVO ALUNO
+            </button>
+          </div>
         </div>
       </div>
 
@@ -998,7 +1001,6 @@ function LessonForm({ user, onBack, onStarted, scheduledLesson = null }) {
       if (!cnhCategory) {
         throw new Error("Categoria da CNH não selecionada.");
       }
-
       const { data: previousLessons, error: previousLessonsError } = await supabase
         .from("ai_lessons")
         .select("id, status")
@@ -1997,8 +1999,7 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
                 <button type="button" onClick={resumeLesson} disabled={busy}>RETOMAR AULA</button>
               ) : (
                 <button type="button" onClick={pauseLesson} disabled={busy || isFinished}>PAUSAR AULA</button>
-              )}
-              <button
+              )}              <button
                 type="button"
                 onClick={advancePhase}
                 disabled={busy || isFinished || status === "paused" || currentPhase >= 5}
@@ -2997,8 +2998,7 @@ function LessonDetails({ lesson, onBack }) {
           </div>
         </div>
         <div style={{
-          marginTop: "14px",
-          paddingTop: "12px",
+          marginTop: "14px",          paddingTop: "12px",
           borderTop: "1px solid #e5e9ef",
           display: "flex",
           gap: "24px",
@@ -3997,8 +3997,7 @@ Documento gerado pelo ENAT — Assistente do Instrutor.
 `;
   }
 
-  function printContract() {
-    if (!savedStudent) {
+  function printContract() {    if (!savedStudent) {
       setMsg("Salve o aluno antes de gerar o contrato.");
       return;
     }
@@ -4389,7 +4388,10 @@ Documento gerado pelo ENAT — Assistente do Instrutor.
             <b>{user?.email}</b>
             <small>Cadastro de aluno</small>
           </div>
-          <span className="pill">ALUNOS</span>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+            <RefreshButton />
+            <span className="pill">ALUNOS</span>
+          </div>
         </header>
 
         <section>
@@ -4997,8 +4999,7 @@ if (tab === "aulas" && activeLesson) {
       }}
       onCompleted={() => {
         setActiveLesson(null);
-        setTab("aulas");
-      }}
+        setTab("aulas");      }}
     />
   );
 }
@@ -5997,7 +5998,6 @@ if (tab === "financeiro") {
             </p>
 
           ) : (
-
             financeAccounts.map(account => (
 
               <div
@@ -6997,8 +6997,7 @@ function HsiDothPAssessment({ user, selectedStudent }) {
                   padding: "9px 10px",
                   borderBottom: "1px solid #e6edf5",
                   display: "grid",
-                  gridTemplateColumns: "1fr auto",
-                  gap: "10px"
+                  gridTemplateColumns: "1fr auto",                  gap: "10px"
                 }}>
                   <div>
                     <strong>Aula {studentRecords.length - index}</strong>
@@ -7997,8 +7996,7 @@ button { background: #55BFEF; border: 0; color: white; padding: 10px 16px; borde
                           ) : (
                             <div style={{ color: "#667780" }}>Este módulo só será concluído após aprovação na avaliação final.</div>
                           )}
-                          <button type="button" onClick={() => openAssessment(index)}>{isDone ? "REFAZER AVALIAÇÃO" : "📝 FAZER AVALIAÇÃO FINAL"}</button>
-                        </div>
+                          <button type="button" onClick={() => openAssessment(index)}>{isDone ? "REFAZER AVALIAÇÃO" : "📝 FAZER AVALIAÇÃO FINAL"}</button>                        </div>
                       )}
                     </div>
                   )}
@@ -8269,7 +8267,6 @@ if (!rootElement) {
 } else {
   createRoot(rootElement).render(<React.StrictMode><Root /></React.StrictMode>);
 }
-
 
 
 
