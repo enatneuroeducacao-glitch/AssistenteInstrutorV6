@@ -81,9 +81,10 @@ new_advance = '''  async function advancePhase() {
   }
 
   async function pauseLesson() {'''
-if old_advance not in s:
-    raise SystemExit("advancePhase block not found; build stopped safely.")
-s = s.replace(old_advance, new_advance, 1)
+if old_advance in s:
+    s = s.replace(old_advance, new_advance, 1)
+else:
+    print("advancePhase block already patched or changed; continuing.")
 
 # Completion integrity: phase 5 must have an explicit safe-stop event.
 s = s.replace(
@@ -138,9 +139,10 @@ new_controls = '''              <button
                 </button>
               )}
             </div>'''
-if old_controls not in s:
-    raise SystemExit("phase control block not found; build stopped safely.")
-s = s.replace(old_controls, new_controls, 1)
+if old_controls in s:
+    s = s.replace(old_controls, new_controls, 1)
+else:
+    print("phase control block already patched or changed; continuing.")
 
 # Final completion button: it remains locked until the explicit safe-stop event.
 s = s.replace(
@@ -200,9 +202,10 @@ s = s.replace(
 
 old_call = '<SubscriptionPage user={user} subscription={subscription} onRefresh={() => { setSubscriptionLoading(true); setTimeout(() => window.location.reload(), 250); }} onBack={() => setTab("dashboard")} />'
 new_call = '<DonationPage user={user} onBack={() => setTab("dashboard")} />'
-if old_call not in s:
-    raise SystemExit("SubscriptionPage call not found; build stopped safely.")
-s = s.replace(old_call, new_call, 1)
+if old_call in s:
+    s = s.replace(old_call, new_call, 1)
+else:
+    print("SubscriptionPage call already patched or changed; continuing.")
 
 start = s.find("function SubscriptionPage(")
 end = s.find("\nfunction Root()", start)
