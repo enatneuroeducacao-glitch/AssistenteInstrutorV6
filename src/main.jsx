@@ -54,6 +54,43 @@ function ENATLogo({ compact = false }) {
   );
 }
 
+function RefreshButton({ label = "ATUALIZAR" }) {
+  const [busy, setBusy] = useState(false);
+
+  function refresh() {
+    if (busy) return;
+    setBusy(true);
+    window.dispatchEvent(new CustomEvent("enat:refresh", { detail: { source: "manual" } }));
+    window.setTimeout(() => setBusy(false), 700);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={refresh}
+      aria-label={label}
+      title="Atualizar dados sem encerrar uma aula em andamento"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "7px",
+        padding: "8px 12px",
+        borderRadius: "8px",
+        border: "1px solid #cbd9eb",
+        background: "#fff",
+        color: "#18345f",
+        fontWeight: 800,
+        cursor: busy ? "wait" : "pointer",
+        opacity: busy ? 0.7 : 1
+      }}
+    >
+      <span aria-hidden="true" style={{ fontSize: "15px" }}>{busy ? "↻" : "⟳"}</span>
+      {busy ? "ATUALIZANDO..." : label}
+    </button>
+  );
+}
+
 function Auth({ onAuth }) {
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
@@ -427,6 +464,9 @@ function StudentList({ user, onNewStudent, onSelectStudent }) {
 
   useEffect(() => {
     loadStudents();
+    const handleRefresh = () => loadStudents();
+    window.addEventListener("enat:refresh", handleRefresh);
+    return () => window.removeEventListener("enat:refresh", handleRefresh);
   }, [user.id]);
 
   return (
@@ -540,6 +580,9 @@ function AgendaForm({ user, onBack, onScheduled }) {
     }
 
     loadStudents();
+    const handleRefresh = () => loadStudents();
+    window.addEventListener("enat:refresh", handleRefresh);
+    return () => window.removeEventListener("enat:refresh", handleRefresh);
   }, [user?.id]);
 
   async function scheduleLesson(e) {
@@ -1494,6 +1537,43 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
     setMessage("");
   }, [lesson]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function refreshCurrentLesson() {
+      if (!supabase || !user?.id || !currentLesson?.id) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("ai_lessons")
+          .select("*, ai_students(full_name, category), ai_vehicles(brand, model, plate)")
+          .eq("id", currentLesson.id)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (active && data) {
+          setCurrentLesson(data);
+          setKmFinal(data?.km_end ?? "");
+          setNotes(data?.notes ?? "");
+          setMessage("Dados da aula atualizados. O status da aula foi preservado.");
+        }
+      } catch (error) {
+        console.error("Erro ao atualizar aula em andamento:", error);
+        if (active) setMessage(error?.message || "Não foi possível atualizar os dados da aula.");
+      }
+    }
+
+    const handleRefresh = () => refreshCurrentLesson();
+    window.addEventListener("enat:refresh", handleRefresh);
+
+    return () => {
+      active = false;
+      window.removeEventListener("enat:refresh", handleRefresh);
+    };
+  }, [currentLesson?.id, user?.id]);
+
   const currentPhase = Number(currentLesson?.phase || 1);
   const status = currentLesson?.status || "running";
   const isFinished = status === "completed" || status === "canceled";
@@ -2137,6 +2217,9 @@ function LessonHistory({ user, onBack, onSelect }) {
 
   useEffect(() => {
     loadLessons();
+    const handleRefresh = () => loadLessons();
+    window.addEventListener("enat:refresh", handleRefresh);
+    return () => window.removeEventListener("enat:refresh", handleRefresh);
   }, [user.id]);
 
   function formatDate(value) {
@@ -4793,6 +4876,50 @@ Documento gerado pelo ENAT — Assistente do Instrutor.
       active = false;
     };
   }, [user?.id]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function refreshOperationalData() {
+      if (!supabase || !user?.id) return;
+
+      const { data: agendaData, error: agendaError } = await supabase
+        .from("ai_lessons")
+        .select("id, student_id, scheduled_at, started_at, ended_at, status, phase, cnh_category, service_contract_item_id, objective, exam_scheduled_at, exam_type, exam_location, exam_status, ai_students(full_name)")
+        .eq("user_id", user.id)
+        .order("scheduled_at", { ascending: true });
+
+      if (!active) return;
+      if (!agendaError) setAgendaLessons(agendaData || []);
+
+      // Important: refreshing the Aulas tab must never create, complete,
+      // pause, cancel or delete a lesson. It only re-reads the current record.
+      if (tab === "aulas" && !showLessonForm && !showLessonHistory) {
+        const { data: runningLesson, error: runningError } = await supabase
+          .from("ai_lessons")
+          .select("*, ai_students(full_name, category), ai_vehicles(brand, model, plate)")
+          .eq("user_id", user.id)
+          .in("status", ["running", "paused"])
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!active) return;
+        if (!runningError && runningLesson) {
+          setActiveLesson(runningLesson);
+        }
+      }
+    }
+
+    const handleRefresh = () => refreshOperationalData();
+    window.addEventListener("enat:refresh", handleRefresh);
+
+    return () => {
+      active = false;
+      window.removeEventListener("enat:refresh", handleRefresh);
+    };
+  }, [user?.id, tab, showLessonForm, showLessonHistory]);
+
   const menu = [
     ["dashboard", "DASHBOARD", LayoutDashboard],
     ["alunos", "ALUNOS", Users],
@@ -6360,7 +6487,9 @@ return null;
   return <div className="app dashboard-shell"><aside className="main-sidebar"><div className="sidebar-brand"><span>ENAT</span><small>ASSISTENTE DO INSTRUTOR</small></div>
     {menu.map(([key, label, Icon]) => <button key={key} title={label} aria-label={label} className={tab === key ? "nav active" : "nav"} onClick={() => setTab(key)}><Icon size={22} strokeWidth={2.1} /><span>{label}</span></button>)}
     <button className="nav logout" title="SAIR" aria-label="SAIR" onClick={onLogout}><LogOut size={22} /><span>SAIR</span></button>
-  </aside><main><header><div><b>{user?.email}</b><small>ENAT - Assistente do Instrutor — acesso autenticado</small></div><div className="header-date">📅 25 de agosto de 2026</div><span className="pill">AUTENTICADO</span></header><section>{content()}</section></main></div>;
+  </aside><main><header><div><b>{user?.email}</b><small>ENAT - Assistente do Instrutor — acesso autenticado</small></div><div className="header-date">📅 25 de agosto de 2026</div>
+    {["alunos", "agenda", "aulas", "hsi", "rpa"].includes(tab) && <RefreshButton />}
+    <span className="pill">AUTENTICADO</span></header><section>{content()}</section></main></div>;
 }
 
 function HsiDothPAssessment({ user, selectedStudent }) {
@@ -6505,7 +6634,12 @@ function HsiDothPAssessment({ user, selectedStudent }) {
     }
 
     loadData();
-    return () => { active = false; };
+    const handleRefresh = () => loadData();
+    window.addEventListener("enat:refresh", handleRefresh);
+    return () => {
+      active = false;
+      window.removeEventListener("enat:refresh", handleRefresh);
+    };
   }, [user?.id]);
 
   useEffect(() => {
@@ -8135,7 +8269,6 @@ if (!rootElement) {
 } else {
   createRoot(rootElement).render(<React.StrictMode><Root /></React.StrictMode>);
 }
-
 
 
 
