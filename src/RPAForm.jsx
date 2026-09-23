@@ -18,14 +18,51 @@ function formatDate(value) {
 function parseEvaluationText(value) {
   if (!value) return null;
   const text = String(value).trim();
-  const firstBrace = text.indexOf("{");
-  const lastBrace = text.lastIndexOf("}");
-  if (firstBrace < 0 || lastBrace <= firstBrace) return null;
-  try {
-    return JSON.parse(text.slice(firstBrace, lastBrace + 1));
-  } catch {
-    return null;
+  const marker = text.indexOf("[AVALIAÇÃO ANDRAGÓGICA]");
+  const start = text.indexOf("{", marker >= 0 ? marker : 0);
+  if (start < 0) return null;
+
+  // The lesson notes can contain more than one JSON block
+  // (and HSI-DOTH-P is stored after the pedagogical evaluation).
+  // Extract only the first balanced JSON object.
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i += 1) {
+    const char = text[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === "{") depth += 1;
+    if (char === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        try {
+          const parsed = JSON.parse(text.slice(start, i + 1));
+          return parsed && typeof parsed === "object" ? parsed : null;
+        } catch {
+          return null;
+        }
+      }
+    }
   }
+
+  return null;
 }
 
 function buildAutomaticSynthesis(lessons, report, student) {
