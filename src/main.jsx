@@ -1789,9 +1789,27 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
   async function advancePhase() {
     if (readOnly || busy || isFinished) return;
 
+    if (status === "paused") {
+      setMessage("Retome a aula antes de avançar para a próxima fase.");
+      return;
+    }
+
     if (currentPhase >= 5) {
       setMessage("A última fase é a Parada Segura. Para concluir, informe o KM final e finalize a aula.");
       return;
+    }
+
+    // A fase 4 — Avaliação — só libera a Parada Segura depois que
+    // os dois conjuntos de avaliação foram preenchidos.
+    if (currentPhase === 4) {
+      if (!evaluationComplete) {
+        setMessage("Preencha os cinco fatores da avaliação andragógica antes de avançar para a Parada Segura.");
+        return;
+      }
+      if (!hsiComplete) {
+        setMessage("Preencha os cinco fatores do HSI-DOTH-P antes de avançar para a Parada Segura.");
+        return;
+      }
     }
 
     const nextPhase = currentPhase + 1;
@@ -2056,14 +2074,31 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
               {readOnly ? "Consulta somente leitura dos registros da aula." : "Siga as fases na ordem e finalize com a avaliação andragógica."}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onBack}
-            disabled={busy || (!readOnly && !isFinished)}
-            title={!readOnly && !isFinished ? "A aula em andamento deve ser concluída antes de sair desta tela." : "Voltar"}
-          >
-            {(!readOnly && !isFinished) ? "AULA EM ANDAMENTO" : "VOLTAR"}
-          </button>
+          {!readOnly && !isFinished ? (
+            <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
+              <RefreshButton />
+              {status === "paused" ? (
+                <button type="button" onClick={resumeLesson} disabled={busy}>
+                  ▶ RETOMAR AULA
+                </button>
+              ) : (
+                <button type="button" onClick={pauseLesson} disabled={busy}>
+                  ⏸ PAUSAR
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={advancePhase}
+                disabled={busy || status === "paused" || currentPhase >= 5}
+                title={currentPhase >= 5 ? "A aula já está na última fase." : "Concluir a fase atual e avançar"}
+                style={{fontWeight:900}}
+              >
+                {currentPhase >= 5 ? "FASE 5 — PARADA SEGURA" : "✓ CONCLUIR FASE E AVANÇAR →"}
+              </button>
+            </div>
+          ) : (
+            <button type="button" onClick={onBack}>VOLTAR</button>
+          )}
         </div>
       </div>
 
@@ -2163,15 +2198,14 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
             </div>
             <div style={{
               marginTop: "10px",
-              padding: "9px 11px",
+              padding: "11px",
               borderRadius: "8px",
               background: "#ffffff",
               border: "1px solid #dfe7f2",
               fontSize: "11px",
-              fontWeight: 700,
-              opacity: 0.82
+              fontWeight: 700
             }}>
-              Os controles da aula ficam no painel fixo superior para permanecerem sempre visíveis.
+              Use <strong>CONCLUIR FASE E AVANÇAR →</strong> no painel superior para passar à próxima etapa. A fase 4 exige as avaliações completas antes da Parada Segura.
             </div>
           </div>
         )}
