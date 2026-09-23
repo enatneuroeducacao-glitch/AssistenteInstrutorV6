@@ -5283,17 +5283,62 @@ if (tab === "aulas" && showExamForm) {
 }
 if (tab === "aulas" && showLessonForm) {
   return (
-    <LessonForm
-      user={user}
-      scheduledLesson={scheduledLessonToStart}
-      onBack={() => { setScheduledLessonToStart(null); setShowLessonForm(false); }}
-      onStarted={(lesson) => {
-        setActiveLesson(lesson);
-        setAgendaLessons(prev => prev.map(item => item.id === lesson.id ? { ...item, ...lesson } : item));
-        setScheduledLessonToStart(null);
-        setShowLessonForm(false);
-      }}
-    />
+    <div className="app dashboard-shell">
+      <aside className="main-sidebar">
+        <div className="sidebar-brand">
+          <span>ENAT</span>
+          <small>ASSISTENTE DO INSTRUTOR</small>
+        </div>
+        {menu.map(([key, label, Icon]) => (
+          <button
+            key={key}
+            title={label}
+            aria-label={label}
+            className={tab === key ? "nav active" : "nav"}
+            onClick={() => {
+              if (key === "aulas") return;
+              setScheduledLessonToStart(null);
+              setShowLessonForm(false);
+              setTab(key);
+            }}
+          >
+            <Icon size={22} strokeWidth={2.1} />
+            <span>{label}</span>
+          </button>
+        ))}
+        <button className="nav logout" title="SAIR" aria-label="SAIR" onClick={onLogout}>
+          <LogOut size={22} />
+          <span>SAIR</span>
+        </button>
+      </aside>
+
+      <main>
+        <header>
+          <div>
+            <b>{user?.email}</b>
+            <small>ENAT - Assistente do Instrutor — acesso autenticado</small>
+          </div>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+            <RefreshButton />
+            <span className="pill">NOVA AULA</span>
+          </div>
+        </header>
+
+        <section>
+          <LessonForm
+            user={user}
+            scheduledLesson={scheduledLessonToStart}
+            onBack={() => { setScheduledLessonToStart(null); setShowLessonForm(false); }}
+            onStarted={(lesson) => {
+              setActiveLesson(lesson);
+              setAgendaLessons(prev => prev.map(item => item.id === lesson.id ? { ...item, ...lesson } : item));
+              setScheduledLessonToStart(null);
+              setShowLessonForm(false);
+            }}
+          />
+        </section>
+      </main>
+    </div>
   );
 }
 if (tab === "aulas" && showLessonHistory && selectedLesson) {
