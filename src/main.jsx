@@ -5261,20 +5261,42 @@ if (tab === "financeiro") {
     if (error) return alert("Não foi possível excluir a conta. Ela pode possuir lançamentos vinculados.");
     setFinanceAccounts(prev => prev.filter(a => a.id !== id));
   }
+  const openFinanceEntry = type => {
+    setFinanceForm(prev => ({ ...prev, type, status: "PAGO" }));
+    setShowFinanceForm(true);
+  };
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const monthEntries = financeEntries.filter(e => String(e.entry_date || "").slice(0, 7) === currentMonth);
+  const monthRevenue = monthEntries.filter(e => String(e.type || "").toUpperCase() === "RECEITA" && String(e.status || "").toUpperCase() !== "CANCELADO").reduce((t,e) => t + Number(e.amount || 0), 0);
+  const monthExpenses = monthEntries.filter(e => String(e.type || "").toUpperCase() === "DESPESA" && String(e.status || "").toUpperCase() !== "CANCELADO").reduce((t,e) => t + Number(e.amount || 0), 0);
+
   return (
     <div>
       <section style={{...card,background:"linear-gradient(135deg,#f7fbff 0%,#fff 72%)"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"12px",flexWrap:"wrap"}}>
           <div><div style={{color:"#52708f",fontSize:"11px",fontWeight:900,letterSpacing:".08em"}}>GESTÃO FINANCEIRA</div><h1 style={{margin:"4px 0",fontSize:"26px"}}>Financeiro</h1><p style={{margin:0,color:"#64758a"}}>Controle de receitas, despesas, contas e resultado em uma única visão.</p></div>
-          <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}><RefreshButton/><button type="button" onClick={()=>setShowFinanceForm(true)}>+ LANÇAMENTO</button><button type="button" className="secondary" onClick={()=>setShowFinanceAccounts(true)}>+ CONTA</button></div>
+          <div style={{display:"flex",gap:"8px",flexWrap:"wrap"}}><RefreshButton/><button type="button" onClick={()=>openFinanceEntry("RECEITA")}>+ RECEITA</button><button type="button" className="secondary" onClick={()=>openFinanceEntry("DESPESA")}>− DESPESA</button></div>
         </div>
       </section>
       <section style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:"10px",marginBottom:"12px"}}>
         <div style={mini}><small style={{fontWeight:800,color:"#64758a"}}>RECEITAS</small><strong style={{display:"block",marginTop:"5px",fontSize:"20px",color:"#176b48"}}>{formatCurrency(financeRevenue)}</strong></div>
         <div style={mini}><small style={{fontWeight:800,color:"#64758a"}}>DESPESAS</small><strong style={{display:"block",marginTop:"5px",fontSize:"20px",color:"#a04444"}}>{formatCurrency(financeExpenses)}</strong></div>
-        <div style={mini}><small style={{fontWeight:800,color:"#64758a"}}>PENDENTE</small><strong style={{display:"block",marginTop:"5px",fontSize:"20px",color:"#946b00"}}>{formatCurrency(financePending)}</strong></div>
+        <div style={mini}><small style={{fontWeight:800,color:"#64758a"}}>PENDÊNCIAS</small><strong style={{display:"block",marginTop:"5px",fontSize:"20px",color:"#946b00"}}>{formatCurrency(financePending)}</strong></div>
         <div style={mini}><small style={{fontWeight:800,color:"#64758a"}}>RESULTADO</small><strong style={{display:"block",marginTop:"5px",fontSize:"20px",color:financeResult>=0?"#176b48":"#a04444"}}>{formatCurrency(financeResult)}</strong></div>
       </section>
+      <section style={{...card, background:"#fbfdff"}}>
+        <div style={{fontSize:"11px",fontWeight:900,letterSpacing:".08em",color:"#52708f"}}>VISÃO RÁPIDA</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"12px",flexWrap:"wrap",marginBottom:"12px"}}>
+          <div><h2 style={{margin:"4px 0 0",fontSize:"19px"}}>Movimentação do mês</h2><p style={{margin:"3px 0 0",color:"#64758a",fontSize:"12px"}}>Entradas e saídas registradas em ${currentMonth.slice(5,7)}/${currentMonth.slice(0,4)}.</p></div>
+          <div style={{fontSize:"12px",color:"#64758a"}}>${monthEntries.length} movimento(s)</div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:"10px"}}>
+          <div style={{...mini,background:"#eef9f2"}}><small style={{color:"#176b48",fontWeight:800}}>ENTRADAS</small><strong style={{display:"block",fontSize:"19px",marginTop:"4px",color:"#176b48"}}>{formatCurrency(monthRevenue)}</strong></div>
+          <div style={{...mini,background:"#fff3f3"}}><small style={{color:"#a04444",fontWeight:800}}>SAÍDAS</small><strong style={{display:"block",fontSize:"19px",marginTop:"4px",color:"#a04444"}}>{formatCurrency(monthExpenses)}</strong></div>
+          <div style={{...mini,background:"#f2f6fb"}}><small style={{color:"#50647e",fontWeight:800}}>SALDO DO MÊS</small><strong style={{display:"block",fontSize:"19px",marginTop:"4px",color:monthRevenue-monthExpenses>=0?"#176b48":"#a04444"}}>{formatCurrency(monthRevenue-monthExpenses)}</strong></div>
+        </div>
+      </section>
+
       {showFinanceForm && <section style={card}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"12px"}}><div><h2 style={{margin:0,fontSize:"18px"}}>Novo lançamento</h2><small style={{color:"#64758a"}}>Registre uma entrada ou saída financeira.</small></div><button type="button" className="secondary" onClick={()=>setShowFinanceForm(false)}>FECHAR</button></div><form onSubmit={saveFinanceEntry} style={{display:"grid",gap:"10px"}}>
         <div style={grid2}><label>Tipo<select value={financeForm.type} onChange={e=>setFinanceForm({...financeForm,type:e.target.value})}><option value="RECEITA">Receita</option><option value="DESPESA">Despesa</option></select></label><label>Data<input type="date" value={financeForm.entry_date} onChange={e=>setFinanceForm({...financeForm,entry_date:e.target.value})} required/></label><label>Categoria<select value={financeForm.category} onChange={e=>setFinanceForm({...financeForm,category:e.target.value})} required><option value="">Selecione</option>{["Aula","Combustível","Manutenção","Seguro","Impostos","Licenciamento","IPVA","Financiamento","Aluguel","Material","Outros"].map(x=><option key={x}>{x}</option>)}</select></label><label>Valor<input type="number" min="0.01" step="0.01" value={financeForm.amount} onChange={e=>setFinanceForm({...financeForm,amount:e.target.value})} required/></label></div>
         <label>Descrição<input value={financeForm.description} onChange={e=>setFinanceForm({...financeForm,description:e.target.value})} placeholder="Ex.: Aula prática, combustível, manutenção..." /></label>
