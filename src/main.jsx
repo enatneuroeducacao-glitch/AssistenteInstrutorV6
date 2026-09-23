@@ -2126,7 +2126,9 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
             </div>
           ))}
         </div>
-      </      <div
+            </div>
+
+      <div
         className="panel"
         style={{
           position: "sticky",
