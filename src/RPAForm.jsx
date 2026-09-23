@@ -85,6 +85,13 @@ export default function RPAForm({ user, onBack }) {
   }, [user?.id]);
 
   useEffect(() => {
+    const handleRefresh = () => loadRpa();
+    window.addEventListener("enat:refresh", handleRefresh);
+    return () => window.removeEventListener("enat:refresh", handleRefresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, selectedStudentId]);
+
+  useEffect(() => {
     if (!selectedStudentId || !reports.length) return;
     const report = reports.find((item) => String(item.student_id) === String(selectedStudentId));
     setSynthesis(report?.latest_notes || "");
