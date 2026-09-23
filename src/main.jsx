@@ -1730,7 +1730,13 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
     const handleRefresh = () => refreshCurrentLesson();
     window.addEventListener("enat:refresh", handleRefresh);
 
-    return (
+    return () => {
+      active = false;
+      window.removeEventListener("enat:refresh", handleRefresh);
+    };
+  }, [currentLesson?.id, user?.id]);
+
+  return (
     <div>
       <div className="panel" style={{padding:"12px 16px",marginBottom:"10px",position:"sticky",top:0,zIndex:30,background:"rgba(255,255,255,.97)",backdropFilter:"blur(8px)",border:"1px solid #dbe5f0"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"12px",flexWrap:"wrap"}}>
