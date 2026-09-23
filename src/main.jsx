@@ -26,6 +26,7 @@ function ENATLogo({ compact = false }) {
       aria-label="ENAT"
     >
       <img
+        className="enat-logo-image"
         src="/enat-logo.png"
         alt="ENAT — Ensino Neuroeducacional Aplicado ao Trânsito"
         style={{
