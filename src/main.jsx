@@ -2315,33 +2315,45 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
 
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(5, minmax(150px, 1fr))",
-          gap: "10px",
-          overflowX: "auto",
-          paddingBottom: "4px"
+          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+          gap: "8px"
         }}>
           {evaluationItems.map((item) => (
             <div key={item.key} style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(150px, 1fr) auto",
+              alignItems: "center",
+              gap: "10px",
               border: "1px solid #dfe5ec",
-              borderRadius: "10px",
-              padding: "12px",
-              background: "#fff",
-              minWidth: "150px"
+              borderRadius: "9px",
+              padding: "9px 10px",
+              background: "#fff"
             }}>
-              <div style={{ fontWeight: 800, fontSize: "12px" }}>{item.label}</div>
-              <div style={{ fontSize: "10px", opacity: 0.65, marginTop: "4px", minHeight: "30px" }}>{item.description}</div>
-              <div style={{ display: "flex", gap: "5px", marginTop: "10px" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: "12px" }}>{item.label}</div>
+                <div style={{
+                  fontSize: "10px",
+                  opacity: 0.65,
+                  marginTop: "3px",
+                  lineHeight: 1.25
+                }}>{item.description}</div>
+              </div>
+
+              <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
                 {[1,2,3,4,5].map((value) => {
                   const selected = Number(evaluation[item.key]) === value;
                   return (
                     <button
                       key={value}
                       type="button"
+                      aria-label={`${item.label}: nota ${value}`}
                       onClick={() => setEvaluationValue(item.key, value)}
                       disabled={readOnly || busy || isFinished}
                       style={{
+                        width: "30px",
                         minWidth: "30px",
-                        padding: "7px 5px",
+                        height: "30px",
+                        padding: 0,
                         borderRadius: "7px",
                         border: selected ? "2px solid #2457a6" : "1px solid #ccd4df",
                         background: selected ? "#e8f0ff" : "#fff",
@@ -2383,15 +2395,53 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
       <div className="panel" style={{ background: "#f7faff" }}>
         <h2>HSI-DOTH-P — avaliação da aula</h2>
         <p style={{ marginTop: 0 }}>Registre os cinco fatores do HSI-DOTH-P em escala de 1 a 5. O resultado será incorporado ao RPA ÚNICO e ao dashboard.</p>
-        <div style={{ display: "grid", gap: "10px" }}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+          gap: "8px"
+        }}>
           {hsiItems.map(item => (
-            <div key={item.key} style={{ padding: "10px 12px", border: "1px solid #d8e4f4", borderRadius: "9px", background: "#fff" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "center" }}>
-                <div><strong>{item.label}</strong><div style={{ fontSize: "12px", opacity: 0.7 }}>{item.description}</div></div>
-                <select value={hsiEvaluation[item.key] || ""} onChange={e => setHsiValue(item.key, e.target.value)} disabled={readOnly || busy || isFinished} style={{ width: "90px", margin: 0 }}>
-                  <option value="">—</option>
-                  {[1,2,3,4,5].map(value => <option key={value} value={value}>{value}</option>)}
-                </select>
+            <div key={item.key} style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(160px, 1fr) auto",
+              alignItems: "center",
+              gap: "10px",
+              padding: "9px 10px",
+              border: "1px solid #d8e4f4",
+              borderRadius: "9px",
+              background: "#fff"
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <strong style={{ fontSize: "12px" }}>{item.label}</strong>
+                <div style={{ fontSize: "10px", opacity: 0.68, marginTop: "3px", lineHeight: 1.25 }}>
+                  {item.description}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                {[1,2,3,4,5].map(value => {
+                  const selected = Number(hsiEvaluation[item.key]) === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-label={`${item.label}: nota ${value}`}
+                      onClick={() => setHsiValue(item.key, value)}
+                      disabled={readOnly || busy || isFinished}
+                      style={{
+                        width: "30px",
+                        minWidth: "30px",
+                        height: "30px",
+                        padding: 0,
+                        borderRadius: "7px",
+                        border: selected ? "2px solid #2457a6" : "1px solid #ccd4df",
+                        background: selected ? "#e8f0ff" : "#fff",
+                        color: "#18345f",
+                        fontWeight: selected ? 800 : 600
+                      }}
+                    >{value}</button>
+                  );
+                })}
               </div>
             </div>
           ))}
