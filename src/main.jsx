@@ -1736,6 +1736,323 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
     };
   }, [currentLesson?.id, user?.id]);
 
+
+  const currentPhase = Number(currentLesson?.phase || 1);
+  const status = currentLesson?.status || "running";
+  const isFinished = status === "completed" || status === "canceled";
+
+  function formatDate(value) {
+    if (!value) return "Não informado";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString("pt-BR");
+  }
+
+  function elapsedMinutes() {
+    if (!currentLesson?.started_at) return null;
+    const start = new Date(currentLesson.started_at).getTime();
+    const endValue = currentLesson.ended_at
+      ? new Date(currentLesson.ended_at).getTime()
+      : Date.now();
+    if (!Number.isFinite(start) || !Number.isFinite(endValue)) return null;
+    return Math.max(0, Math.round((endValue - start) / 60000));
+  }
+
+  async function updateLesson(patch, successMessage) {
+    if (readOnly || busy) return;
+
+    setBusy(true);
+    setMessage("");
+
+    try {
+      const { data, error } = await supabase
+        .from("ai_lessons")
+        .update(patch)
+        .eq("id", currentLesson.id)
+        .eq("user_id", user.id)
+        .select("*")
+        .single();
+
+      if (error) throw error;
+
+      setCurrentLesson(data);
+      if (successMessage) setMessage(successMessage);
+      return data;
+    } catch (error) {
+      console.error("Erro ao atualizar aula:", error);
+      setMessage(error?.message || "Não foi possível atualizar a aula.");
+      return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function advancePhase() {
+    if (readOnly || busy || isFinished) return;
+
+    if (status === "paused") {
+      setMessage("Retome a aula antes de avançar para a próxima fase.");
+      return;
+    }
+
+    if (currentPhase >= 5) {
+      setMessage("A última fase é a Parada Segura. Para concluir, informe o KM final e finalize a aula.");
+      return;
+    }
+
+    // A fase 4 — Avaliação — só libera a Parada Segura depois que
+    // os dois conjuntos de avaliação foram preenchidos.
+    if (currentPhase === 4) {
+      if (!evaluationComplete) {
+        setMessage("Preencha os cinco fatores da avaliação andragógica antes de avançar para a Parada Segura.");
+        return;
+      }
+      if (!hsiComplete) {
+        setMessage("Preencha os cinco fatores do HSI-DOTH-P antes de avançar para a Parada Segura.");
+        return;
+      }
+    }
+
+    const nextPhase = currentPhase + 1;
+    await updateLesson(
+      { phase: nextPhase, status: "running" },
+      `Fase atualizada para ${lessonPhaseLabel(nextPhase)}.`
+    );
+  }
+
+  async function pauseLesson() {
+    if (readOnly || busy || isFinished) return;
+    await updateLesson({ status: "paused" }, "Aula pausada.");
+  }
+
+  async function resumeLesson() {
+    if (readOnly || busy || isFinished) return;
+    await updateLesson({ status: "running" }, "Aula retomada.");
+  }
+
+
+  const evaluationItems = [
+    { key: "attention", label: "Atenção", description: "Mantém foco e acompanha as informações relevantes." },
+    { key: "risk_perception", label: "Percepção de risco", description: "Identifica riscos e antecipa situações de perigo." },
+    { key: "decision_making", label: "Tomada de decisão", description: "Escolhe respostas adequadas diante das situações." },
+    { key: "vehicle_control", label: "Controle do veículo", description: "Executa comandos e mantém domínio do veículo." },
+    { key: "behavior", label: "Comportamento", description: "Demonstra postura segura, responsável e adequada." },
+  ];
+
+  const hsiItems = [
+    { key: "decision", label: "Decisão", description: "Analisa alternativas e escolhe respostas seguras." },
+    { key: "organization", label: "Organização", description: "Planeja e organiza a execução da atividade." },
+    { key: "time", label: "Tempo", description: "Mantém ritmo, antecipação e tempo de resposta adequados." },
+    { key: "humanization", label: "Humanização", description: "Demonstra empatia, respeito e responsabilidade coletiva." },
+    { key: "psychocomportamental", label: "Psicocomportamental", description: "Demonstra autorregulação e comportamento preventivo." },
+  ];
+
+  const evaluationComplete = evaluationItems.every(
+    (item) => Number(evaluation[item.key]) >= 1 && Number(evaluation[item.key]) <= 5
+  );
+  const hsiComplete = hsiItems.every(
+    (item) => Number(hsiEvaluation[item.key]) >= 1 && Number(hsiEvaluation[item.key]) <= 5
+  );
+
+  const evaluationAverage = evaluationComplete
+    ? evaluationItems.reduce((sum, item) => sum + Number(evaluation[item.key]), 0) / evaluationItems.length
+    : null;
+
+  const pedagogicalAnalysis = buildPedagogicalAnalysis(evaluationItems, evaluation);
+
+  function setEvaluationValue(key, value) {
+    if (readOnly || busy) return;
+    setEvaluation((current) => ({
+      ...current,
+      [key]: Number(value),
+    }));
+  }
+
+  function setHsiValue(key, value) {
+    if (readOnly || busy) return;
+    setHsiEvaluation((current) => ({ ...current, [key]: Number(value) }));
+  }
+
+  const hsiAverage = hsiComplete
+    ? hsiItems.reduce((sum, item) => sum + Number(hsiEvaluation[item.key]), 0) / hsiItems.length
+    : null;
+
+  async function completeLesson() {
+    if (readOnly || busy || isFinished) return;
+
+    if (currentPhase !== 5) {
+      setMessage("A aula só pode ser concluída após a fase 5 — Parada Segura.");
+      return;
+    }
+
+    if (!evaluationComplete) {
+      setMessage("Preencha todos os itens da avaliação andragógica antes de concluir a aula.");
+      return;
+    }
+
+    if (!hsiComplete) {
+      setMessage("Preencha todos os cinco fatores do HSI-DOTH-P antes de concluir a aula.");
+      return;
+    }
+
+    if (kmFinal === "") {
+      setMessage("Informe o KM final antes de concluir a aula.");
+      return;
+    }
+
+    const initialKm = Number(currentLesson.km_start);
+    const finalKm = Number(kmFinal);
+
+    if (!Number.isFinite(finalKm)) {
+      setMessage("O KM final deve ser numérico.");
+      return;
+    }
+
+    if (Number.isFinite(initialKm) && finalKm < initialKm) {
+      setMessage("O KM final não pode ser menor que o KM inicial.");
+      return;
+    }
+
+    const endedAt = new Date().toISOString();
+    const duration = currentLesson.started_at
+      ? Math.max(
+          0,
+          Math.round(
+            (new Date(endedAt).getTime() - new Date(currentLesson.started_at).getTime()) / 60000
+          )
+        )
+      : null;
+
+    const pedagogicalEvaluation = {
+      ...evaluation,
+      average: Number(evaluationAverage.toFixed(2)),
+      scale: "1-5",
+      classification: pedagogicalAnalysis.classification,
+      strengths: pedagogicalAnalysis.strengths,
+      development: pedagogicalAnalysis.development,
+      priorities: pedagogicalAnalysis.priorities,
+      diagnosis: pedagogicalAnalysis.diagnosis,
+      next_lesson_recommendation: pedagogicalAnalysis.next_lesson_recommendation,
+      next_lesson_objective: pedagogicalAnalysis.next_lesson_objective,
+      completed_at: endedAt,
+    };
+
+    const evaluationNote = `[AVALIAÇÃO ANDRAGÓGICA] ${JSON.stringify(pedagogicalEvaluation)}`;
+    const hsiPayload = {
+      scores: hsiItems.reduce((acc, item) => ({ ...acc, [item.key]: Number(hsiEvaluation[item.key]) }), {}),
+      average: Number(hsiAverage.toFixed(2)),
+      normalized_score: Number((hsiAverage * 20).toFixed(0)),
+      classification: hsiAverage >= 4.2 ? "ALTO" : hsiAverage >= 3.4 ? "ADEQUADO" : hsiAverage >= 2.6 ? "ATENÇÃO" : "CRÍTICO",
+      completed_at: endedAt,
+    };
+    const hsiNote = `[HSI-DOTH-P] ${JSON.stringify(hsiPayload)}`;
+    const mergedNotes = [notes, evaluationNote, hsiNote]
+      .filter(Boolean)
+      .join("\n\n");
+
+    const patch = {
+      phase: 5,
+      status: "completed",
+      km_end: finalKm,
+      ended_at: endedAt,
+      duration_minutes: duration,
+      notes: mergedNotes || null,
+    };
+
+    const updated = await updateLesson(patch);
+
+    if (updated) {
+      // Baixa uma aula somente na categoria realmente ministrada.
+      if (updated.cnh_category) {
+        const { data: planData, error: planReadError } = await supabase
+          .from("ai_student_category_plans")
+          .select("id, planned_lessons, completed_lessons, service_contract_item_id")
+          .eq("user_id", user.id)
+          .eq("student_id", updated.student_id)
+          .eq("cnh_category", String(updated.cnh_category).toUpperCase())
+          .maybeSingle();
+
+        if (!planReadError && planData) {
+          const completed = Math.min(
+            Number(planData.planned_lessons || 0),
+            Number(planData.completed_lessons || 0) + 1
+          );
+          const { error: planUpdateError } = await supabase
+            .from("ai_student_category_plans")
+            .update({ completed_lessons: completed })
+            .eq("id", planData.id)
+            .eq("user_id", user.id);
+          if (planUpdateError) console.warn("Não foi possível atualizar a quantidade concluída da categoria:", planUpdateError);
+
+          if (planData.service_contract_item_id) {
+            const { error: itemUpdateError } = await supabase
+              .from("ai_service_contract_items")
+              .update({ completed_lessons: completed })
+              .eq("id", planData.service_contract_item_id)
+              .eq("user_id", user.id);
+            if (itemUpdateError) console.warn("Não foi possível atualizar o item do contrato:", itemUpdateError);
+          }
+        }
+      }
+
+      const rpaUpdate = {
+        latest_lesson_id: updated.id,
+        total_lessons: Number(updated.lesson_number || 1),
+        latest_quality_score: Number((evaluationAverage * 20).toFixed(2)),
+        latest_hsi_score: Number((hsiAverage * 20).toFixed(2)),
+        latest_average: Number(evaluationAverage.toFixed(2)),
+        latest_evaluation: pedagogicalEvaluation,
+        continuity_plan: pedagogicalAnalysis.next_lesson_recommendation || null,
+        latest_notes: notes || null,
+        status: "EM_FORMACAO",
+        updated_at: new Date().toISOString()
+      };
+
+      let { error: rpaError } = await supabase
+        .from("ai_rpa_reports")
+        .update(rpaUpdate)
+        .eq("user_id", user.id)
+        .eq("student_id", updated.student_id);
+
+      // Compatibilidade com bancos ainda não migrados: preserva a evolução
+      // nos campos estruturais já existentes e não bloqueia a conclusão da aula.
+      if (rpaError) {
+        const fallbackNotes = [
+          notes || null,
+          `[AVALIAÇÃO ANDRAGÓGICA] ${JSON.stringify(pedagogicalEvaluation)}`,
+          `[HSI-DOTH-P] ${JSON.stringify({ scores: hsiEvaluation, average: Number(hsiAverage.toFixed(2)), normalized_score: Number((hsiAverage * 20).toFixed(0)) })}`
+        ].filter(Boolean).join("\n");
+        const fallback = {
+          latest_lesson_id: updated.id,
+          total_lessons: Number(updated.lesson_number || 1),
+          latest_notes: fallbackNotes,
+          continuity_plan: pedagogicalAnalysis.next_lesson_recommendation || null,
+          status: "EM_FORMACAO",
+          updated_at: new Date().toISOString()
+        };
+        const retry = await supabase
+          .from("ai_rpa_reports")
+          .update(fallback)
+          .eq("user_id", user.id)
+          .eq("student_id", updated.student_id);
+        rpaError = retry.error;
+      }
+
+      if (rpaError) {
+        console.warn("Aula concluída, mas não foi possível atualizar o RPA:", rpaError);
+      }
+    }
+
+    if (updated && onCompleted) {
+      onCompleted(updated);
+    }
+  }
+
+  const distance =
+    currentLesson?.km_start != null && kmFinal !== ""
+      ? Number(kmFinal) - Number(currentLesson.km_start)
+      : null;
+
   return (
     <div>
       <div className="panel" style={{padding:"12px 16px",marginBottom:"10px",position:"sticky",top:0,zIndex:30,background:"rgba(255,255,255,.97)",backdropFilter:"blur(8px)",border:"1px solid #dbe5f0"}}>
