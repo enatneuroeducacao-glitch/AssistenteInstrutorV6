@@ -1108,6 +1108,9 @@ function ExamScheduleForm({ user, onBack, onScheduled }) {
 function LessonForm({ user, onBack, onStarted, scheduledLesson = null }) {
   const [students, setStudents] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [showQuickVehicle, setShowQuickVehicle] = useState(false);
+  const [quickVehicle, setQuickVehicle] = useState({ brand: "", model: "", year: "", plate: "" });
+  const [vehicleBusy, setVehicleBusy] = useState(false);
 
   const [studentId, setStudentId] = useState("");
   const [vehicleId, setVehicleId] = useState("");
@@ -1171,6 +1174,51 @@ function LessonForm({ user, onBack, onStarted, scheduledLesson = null }) {
   useEffect(() => {
     setLessonCategory("");
  }, [studentId]);
+
+  async function saveQuickVehicle() {
+    if (!supabase || !user?.id) return;
+    const brand = quickVehicle.brand.trim();
+    const model = quickVehicle.model.trim();
+    const year = quickVehicle.year.trim();
+    const plate = quickVehicle.plate.trim().toUpperCase();
+
+    if (!brand || !model || !year || !plate) {
+      setMsg("Informe marca, modelo, ano e placa do veículo.");
+      return;
+    }
+
+    setVehicleBusy(true);
+    setMsg("");
+
+    try {
+      const { data, error } = await supabase
+        .from("ai_vehicles")
+        .insert({
+          user_id: user.id,
+          brand,
+          model,
+          model_year: Number(year),
+          plate
+        })
+        .select("id, brand, model, plate")
+        .single();
+
+      if (error) throw error;
+
+      setVehicles(prev => [...prev, data].sort((a, b) =>
+        String(a.brand || "").localeCompare(String(b.brand || ""))
+      ));
+      setVehicleId(data.id);
+      setQuickVehicle({ brand: "", model: "", year: "", plate: "" });
+      setShowQuickVehicle(false);
+      setMsg("Veículo cadastrado e selecionado para esta aula.");
+    } catch (error) {
+      console.error("Erro ao cadastrar veículo pela aula:", error);
+      setMsg(error?.message || "Não foi possível cadastrar o veículo.");
+    } finally {
+      setVehicleBusy(false);
+    }
+  }
 
   async function startLesson(e) {
     e.preventDefault();
@@ -1393,6 +1441,45 @@ function LessonForm({ user, onBack, onStarted, scheduledLesson = null }) {
                 </select>
               </label>
             </div>
+
+            <div style={{marginTop:"12px"}}>
+              <button
+                type="button"
+                className="secondary"
+                onClick={() => setShowQuickVehicle(v => !v)}
+                style={{fontWeight:800}}
+              >
+                {showQuickVehicle ? "FECHAR CADASTRO" : "+ CADASTRAR VEÍCULO"}
+              </button>
+              <span style={{marginLeft:"10px",fontSize:"12px",color:"#6d7885"}}>
+                O cadastro do veículo não é uma despesa.
+              </span>
+            </div>
+
+            {showQuickVehicle && (
+              <div style={{marginTop:"12px",padding:"14px",borderRadius:"10px",background:"#f7fbff",border:"1px solid #d8e7f5"}}>
+                <div style={{fontWeight:900,color:"#18345f",marginBottom:"10px"}}>Cadastro rápido do veículo</div>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:"10px"}}>
+                  <label>Marca
+                    <input value={quickVehicle.brand} onChange={e => setQuickVehicle(v => ({...v, brand:e.target.value}))} placeholder="Ex.: Toyota" />
+                  </label>
+                  <label>Modelo
+                    <input value={quickVehicle.model} onChange={e => setQuickVehicle(v => ({...v, model:e.target.value}))} placeholder="Ex.: Yaris" />
+                  </label>
+                  <label>Ano
+                    <input type="number" value={quickVehicle.year} onChange={e => setQuickVehicle(v => ({...v, year:e.target.value}))} placeholder="2026" />
+                  </label>
+                  <label>Placa
+                    <input value={quickVehicle.plate} onChange={e => setQuickVehicle(v => ({...v, plate:e.target.value}))} placeholder="ABC1D23" />
+                  </label>
+                </div>
+                <div style={{display:"flex",gap:"8px",marginTop:"12px",alignItems:"center"}}>
+                  <button type="button" onClick={saveQuickVehicle} disabled={vehicleBusy}>
+                    {vehicleBusy ? "SALVANDO..." : "SALVAR E USAR NA AULA"}
+                  </button>
+                </div>
+              </div>
+            )}
             {studentId && (
               <div style={{marginTop:"14px",padding:"14px",borderRadius:"10px",background:"#f7fbff",border:"1px solid #d8e7f5"}}>
                 <label style={{fontWeight:800}}>Categoria da aula
