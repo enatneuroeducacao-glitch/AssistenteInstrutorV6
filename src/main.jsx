@@ -997,7 +997,6 @@ function LessonForm({ user, onBack, onStarted, scheduledLesson = null }) {
 
       const cnhCategory =
         String(lessonCategory).toUpperCase();
-
       if (!cnhCategory) {
         throw new Error("Categoria da CNH não selecionada.");
       }
@@ -1997,8 +1996,7 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "10px" }}>
               {status === "paused" ? (
                 <button type="button" onClick={resumeLesson} disabled={busy}>RETOMAR AULA</button>
-              ) : (
-                <button type="button" onClick={pauseLesson} disabled={busy || isFinished}>PAUSAR AULA</button>
+              ) : (                <button type="button" onClick={pauseLesson} disabled={busy || isFinished}>PAUSAR AULA</button>
               )}              <button
                 type="button"
                 onClick={advancePhase}
@@ -2997,8 +2995,7 @@ function LessonDetails({ lesson, onBack }) {
             <strong>{lesson.duration_minutes != null ? `${lesson.duration_minutes} min` : "—"}</strong>
           </div>
         </div>
-        <div style={{
-          marginTop: "14px",          paddingTop: "12px",
+        <div style={{          marginTop: "14px",          paddingTop: "12px",
           borderTop: "1px solid #e5e9ef",
           display: "flex",
           gap: "24px",
@@ -3997,8 +3994,7 @@ Documento gerado pelo ENAT — Assistente do Instrutor.
 `;
   }
 
-  function printContract() {    if (!savedStudent) {
-      setMsg("Salve o aluno antes de gerar o contrato.");
+  function printContract() {    if (!savedStudent) {      setMsg("Salve o aluno antes de gerar o contrato.");
       return;
     }
 
@@ -4997,8 +4993,7 @@ if (tab === "aulas" && activeLesson) {
         setActiveLesson(null);
         setTab("aulas");
       }}
-      onCompleted={() => {
-        setActiveLesson(null);
+      onCompleted={() => {        setActiveLesson(null);
         setTab("aulas");      }}
     />
   );
@@ -5423,7 +5418,7 @@ if (tab === "financeiro") {
   }
   return (
     <>
-      <h1>Financeiro</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", flexWrap: "wrap" }}><h1>Financeiro</h1><RefreshButton /></div>
 
       <div className="panel">
         <h2>Gest&atilde;o financeira do instrutor</h2>
@@ -5997,8 +5992,7 @@ if (tab === "financeiro") {
               Nenhuma conta bancária cadastrada.
             </p>
 
-          ) : (
-            financeAccounts.map(account => (
+          ) : (            financeAccounts.map(account => (
 
               <div
                 key={account.id}
@@ -6997,8 +6991,7 @@ function HsiDothPAssessment({ user, selectedStudent }) {
                   padding: "9px 10px",
                   borderBottom: "1px solid #e6edf5",
                   display: "grid",
-                  gridTemplateColumns: "1fr auto",                  gap: "10px"
-                }}>
+                  gridTemplateColumns: "1fr auto",                  gap: "10px"                }}>
                   <div>
                     <strong>Aula {studentRecords.length - index}</strong>
                     <span> — {formatDate(record.started_at)}</span>
@@ -7997,8 +7990,7 @@ button { background: #55BFEF; border: 0; color: white; padding: 10px 16px; borde
                             <div style={{ color: "#667780" }}>Este módulo só será concluído após aprovação na avaliação final.</div>
                           )}
                           <button type="button" onClick={() => openAssessment(index)}>{isDone ? "REFAZER AVALIAÇÃO" : "📝 FAZER AVALIAÇÃO FINAL"}</button>                        </div>
-                      )}
-                    </div>
+                      )}                    </div>
                   )}
                 </div>
               );
@@ -8267,7 +8259,6 @@ if (!rootElement) {
 } else {
   createRoot(rootElement).render(<React.StrictMode><Root /></React.StrictMode>);
 }
-
 
 
 
