@@ -6346,220 +6346,292 @@ if (tab === "agenda" && showAgendaForm) {
     />
   );
 }
+
 if (tab === "agenda") {
   const hoje = new Date();
-  const inicioHoje = new Date(
-    hoje.getFullYear(),
-    hoje.getMonth(),
-    hoje.getDate()
-  );
+  const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+  const fimHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() + 1);
 
-  const fimHoje = new Date(
-    hoje.getFullYear(),
-    hoje.getMonth(),
-    hoje.getDate() + 1
-  );
-
-  const aulasHoje = agendaLessons.filter((lesson) => {
+  const aulasHoje = agendaLessons.filter(lesson => {
     if (!lesson.scheduled_at) return false;
-
     const data = new Date(lesson.scheduled_at);
-
     return data >= inicioHoje && data < fimHoje;
   });
 
-  const proximasAulas = agendaLessons.filter((lesson) => {
-    if (!lesson.scheduled_at) return false;
-
-    const data = new Date(lesson.scheduled_at);
-
-    return data >= hoje;
-  });
+  const proximasAulas = agendaLessons
+    .filter(lesson => lesson.scheduled_at && new Date(lesson.scheduled_at) >= hoje)
+    .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at));
 
   const alunosAgendados = new Set(
-    agendaLessons
-      .map((lesson) => lesson.student_id)
-      .filter(Boolean)
+    agendaLessons.map(lesson => lesson.student_id).filter(Boolean)
   );
 
-  function nomeAlunoAgenda(lesson) {
-    const aluno = Array.isArray(lesson.ai_students)
-      ? lesson.ai_students[0]
-      : lesson.ai_students;
+  const provas = agendaLessons
+    .filter(lesson => lesson.exam_scheduled_at)
+    .sort((a, b) => new Date(a.exam_scheduled_at) - new Date(b.exam_scheduled_at));
 
+  const [agendaView, setAgendaView] = (() => {
+    const state = React.useState("hoje");
+    return state;
+  })();
+  const [agendaSearch, setAgendaSearch] = React.useState("");
+
+  function nomeAlunoAgenda(lesson) {
+    const aluno = Array.isArray(lesson.ai_students) ? lesson.ai_students[0] : lesson.ai_students;
     return aluno?.full_name || "Aluno não identificado";
   }
 
-  function dataAgenda(value) {
+  function dataAgenda(value, options = {}) {
     if (!value) return "Data não definida";
-
     const data = new Date(value);
-
-    if (Number.isNaN(data.getTime())) {
-      return "Data inválida";
-    }
-
+    if (Number.isNaN(data.getTime())) return "Data inválida";
     return data.toLocaleString("pt-BR", {
-      dateStyle: "short",
-      timeStyle: "short"
+      dateStyle: options.dateStyle || "short",
+      timeStyle: options.timeStyle || "short"
     });
   }
 
-  function statusAgenda(status) {
-    if (!status) return "AGENDADA";
+  function horaAgenda(value) {
+    if (!value) return "—";
+    const data = new Date(value);
+    if (Number.isNaN(data.getTime())) return "—";
+    return data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  }
 
+  function statusAgenda(status) {
     const mapa = {
       scheduled: "AGENDADA",
       running: "EM ANDAMENTO",
       completed: "CONCLUÍDA",
-      cancelled: "CANCELADA"
+      cancelled: "CANCELADA",
+      canceled: "CANCELADA"
     };
-
-    return mapa[status] || String(status).toUpperCase();
+    return mapa[status] || String(status || "AGENDADA").toUpperCase();
   }
 
+  function statusAgendaStyle(status) {
+    const value = String(status || "").toLowerCase();
+    if (value === "running") return { background: "#fff4df", color: "#8a5a00" };
+    if (value === "completed") return { background: "#eaf7ef", color: "#1f6b3a" };
+    if (value === "cancelled" || value === "canceled") return { background: "#fceeee", color: "#9b3030" };
+    return { background: "#eaf3ff", color: "#1d5f9e" };
+  }
+
+  const termo = agendaSearch.trim().toLowerCase();
+  const aulasFiltradas = proximasAulas.filter(lesson => {
+    if (!termo) return true;
+    const nome = nomeAlunoAgenda(lesson).toLowerCase();
+    const objetivo = String(lesson.objective || "").toLowerCase();
+    return nome.includes(termo) || objetivo.includes(termo);
+  });
+
+  const aulasExibidas =
+    agendaView === "hoje"
+      ? aulasFiltradas.filter(lesson => {
+          const d = new Date(lesson.scheduled_at);
+          return d >= inicioHoje && d < fimHoje;
+        })
+      : agendaView === "proximas"
+        ? aulasFiltradas
+        : agendaLessons
+            .filter(lesson => lesson.scheduled_at)
+            .sort((a, b) => new Date(a.scheduled_at) - new Date(b.scheduled_at))
+            .filter(lesson => {
+              if (!termo) return true;
+              return nomeAlunoAgenda(lesson).toLowerCase().includes(termo) ||
+                String(lesson.objective || "").toLowerCase().includes(termo);
+            });
+
   return (
-    <>
-      <h1>Agenda</h1>
-
-      <div className="panel">
-        <h2>Planejamento de aulas</h2>
-
-        <p>
-          Organize as próximas aulas, acompanhe os alunos e
-          prepare a condução das atividades seguintes.
-        </p>
-
+    <div>
+      <div
+        className="panel"
+        style={{
+          background: "linear-gradient(135deg, #f7faff 0%, #ffffff 72%)",
+          border: "1px solid #dfe7f2",
+          marginBottom: "14px"
+        }}
+      >
         <div style={{
           display: "flex",
-          gap: "10px",
-          flexWrap: "wrap",
-          marginTop: "12px"
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "16px",
+          flexWrap: "wrap"
         }}>
-          <button
-            type="button"
-            onClick={() => setShowAgendaForm(true)}
-          >
-            + AGENDAR AULA
-          </button>
-        </div>
-
-        <div className="grid">
-
-          <div className="metric">
-            <div style={{ fontSize: "12px", opacity: 0.7 }}>
-              AULAS HOJE
+          <div>
+            <div style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", color: "#52708f", marginBottom: "5px" }}>
+              GESTÃO DA AGENDA
             </div>
-            {aulasHoje.length}
+            <h1 style={{ margin: 0, fontSize: "28px" }}>Agenda</h1>
+            <p style={{ margin: "7px 0 0", maxWidth: "680px" }}>
+              Organize aulas e provas em um único lugar. Veja primeiro o que precisa acontecer e inicie a aula diretamente daqui.
+            </p>
           </div>
 
-          <div className="metric">
-            <div style={{ fontSize: "12px", opacity: 0.7 }}>
-              PRÓXIMAS AULAS
-            </div>
-            {proximasAulas.length}
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+            <RefreshButton />
+            <button type="button" onClick={() => setShowAgendaForm(true)}>+ AGENDAR AULA</button>
           </div>
-
-          <div className="metric">
-            <div style={{ fontSize: "12px", opacity: 0.7 }}>
-              ALUNOS
-            </div>
-            {alunosAgendados.size}
-          </div>
-
         </div>
       </div>
 
-      <div className="panel">
-        <h2>Próximas aulas</h2>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+        gap: "10px",
+        marginBottom: "14px"
+      }}>
+        {[
+          ["HOJE", aulasHoje.length, "#eaf3ff"],
+          ["PRÓXIMAS", proximasAulas.length, "#edf8f1"],
+          ["ALUNOS", alunosAgendados.size, "#f5f0ff"],
+          ["PROVAS", provas.length, "#fff4e8"]
+        ].map(([label, value, bg]) => (
+          <div key={label} className="panel" style={{ margin: 0, padding: "14px 16px" }}>
+            <div style={{ fontSize: "10px", fontWeight: 800, opacity: 0.62, letterSpacing: "0.06em" }}>{label}</div>
+            <div style={{ fontSize: "26px", fontWeight: 900, marginTop: "3px" }}>{value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="panel" style={{ marginBottom: "14px" }}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(220px, 1fr) auto",
+          gap: "10px",
+          alignItems: "end"
+        }}>
+          <label style={{ margin: 0 }}>
+            Buscar na agenda
+            <input
+              value={agendaSearch}
+              onChange={e => setAgendaSearch(e.target.value)}
+              placeholder="Nome do aluno ou objetivo da aula"
+            />
+          </label>
+
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+            {[
+              ["hoje", "HOJE"],
+              ["proximas", "PRÓXIMAS"],
+              ["todas", "TODAS"]
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={agendaView === key ? "" : "link"}
+                onClick={() => setAgendaView(key)}
+                style={{ margin: 0 }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="panel" style={{ marginBottom: "14px" }}>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "12px",
+          flexWrap: "wrap",
+          marginBottom: "12px"
+        }}>
+          <div>
+            <h2 style={{ marginBottom: "4px" }}>
+              {agendaView === "hoje" ? "Aulas de hoje" : agendaView === "proximas" ? "Próximas aulas" : "Todas as aulas"}
+            </h2>
+            <p style={{ margin: 0, fontSize: "13px" }}>
+              {aulasExibidas.length} registro(s) para acompanhamento.
+            </p>
+          </div>
+        </div>
 
         {agendaLoading ? (
           <p>Carregando agenda...</p>
-        ) : proximasAulas.length === 0 ? (
-          <p>
-            Nenhuma aula futura registrada.
-          </p>
+        ) : aulasExibidas.length === 0 ? (
+          <div style={{
+            padding: "34px 20px",
+            textAlign: "center",
+            border: "1px dashed #cfdbe8",
+            borderRadius: "10px",
+            background: "#fafcff"
+          }}>
+            <div style={{ fontSize: "32px", marginBottom: "7px" }}>📅</div>
+            <h3 style={{ marginBottom: "5px" }}>
+              {agendaView === "hoje" ? "Nenhuma aula para hoje" : "Nenhuma aula encontrada"}
+            </h3>
+            <p style={{ margin: "0 auto 14px", maxWidth: "520px" }}>
+              {agendaView === "hoje"
+                ? "Você pode agendar uma aula ou consultar as próximas programações."
+                : "Ajuste a busca ou altere o filtro para visualizar outros registros."}
+            </p>
+            <button type="button" onClick={() => setShowAgendaForm(true)}>+ AGENDAR AULA</button>
+          </div>
         ) : (
-
-          <div
-            style={{
-              display: "grid",
-              gap: "6px",
-              fontSize: "13px"
-            }}
-          >
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1.1fr 1.2fr .7fr 1.5fr 1fr auto",
-                gap: "10px",
-                padding: "10px 12px",
-                background: "#eef4fb",
-                border: "1px solid #d8e4f4",
-                borderRadius: "8px",
-                fontWeight: 800,
-                fontSize: "11px",
-                color: "#29436d"
-              }}
-            >
-              <div>DATA / HORA</div>
-              <div>ALUNO</div>
-              <div>CATEGORIA</div>
-              <div>OBJETIVO</div>
-              <div>STATUS</div>
-              <div>AÇÃO</div>
-            </div>
-
-            {proximasAulas.slice(0, 10).map((lesson) => (
+          <div style={{ display: "grid", gap: "9px" }}>
+            {aulasExibidas.map(lesson => (
               <div
                 key={lesson.id}
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "1.1fr 1.2fr .7fr 1.5fr 1fr auto",
-                  gap: "10px",
+                  gridTemplateColumns: "76px minmax(180px, 1.2fr) 80px minmax(140px, 1.5fr) auto",
+                  gap: "12px",
                   alignItems: "center",
-                  padding: "11px 12px",
-                  border: "1px solid #d8e4f4",
-                  borderRadius: "8px",
-                  background: "#ffffff"
+                  padding: "12px",
+                  border: "1px solid #dfe7f2",
+                  borderRadius: "10px",
+                  background: "#fff"
                 }}
               >
-                <div>
-                  {dataAgenda(lesson.scheduled_at)}
+                <div style={{
+                  textAlign: "center",
+                  padding: "7px 5px",
+                  borderRadius: "8px",
+                  background: "#f3f7fb"
+                }}>
+                  <div style={{ fontSize: "10px", fontWeight: 800, opacity: 0.62 }}>HORÁRIO</div>
+                  <strong style={{ fontSize: "17px" }}>{horaAgenda(lesson.scheduled_at)}</strong>
                 </div>
 
-                <div>
-                  <strong>
-                    {nomeAlunoAgenda(lesson)}
-                  </strong>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 800, fontSize: "15px" }}>{nomeAlunoAgenda(lesson)}</div>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "5px" }}>
+                    <span style={{ padding: "3px 7px", borderRadius: "999px", background: "#f0f5fa", fontSize: "10px", fontWeight: 800 }}>
+                      CNH {lesson.cnh_category || "—"}
+                    </span>
+                    {lesson.objective && (
+                      <span style={{ fontSize: "11px", opacity: 0.68 }}>{lesson.objective}</span>
+                    )}
+                  </div>
                 </div>
 
-                <div>
-                  <strong>{lesson.cnh_category || "—"}</strong>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: "10px", opacity: 0.62 }}>DATA</div>
+                  <div style={{ fontWeight: 700, fontSize: "12px", marginTop: "3px" }}>
+                    {new Date(lesson.scheduled_at).toLocaleDateString("pt-BR")}
+                  </div>
                 </div>
 
-                <div style={{ opacity: 0.8 }}>
-                  {lesson.objective || "—"}
-                </div>
-
-                <div>
-                  <span
-                    style={{
-                      display: "inline-block",
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      background: "#edf7ef",
-                      fontSize: "11px",
-                      fontWeight: 700
-                    }}
-                  >
+                <div style={{ fontSize: "12px", opacity: 0.78 }}>
+                  <div style={{ fontSize: "10px", opacity: 0.65, marginBottom: "3px" }}>SITUAÇÃO</div>
+                  <span style={{
+                    ...statusAgendaStyle(lesson.status),
+                    display: "inline-flex",
+                    padding: "5px 8px",
+                    borderRadius: "999px",
+                    fontSize: "10px",
+                    fontWeight: 800
+                  }}>
                     {statusAgenda(lesson.status)}
                   </span>
                 </div>
 
-                <div>
-                  {String(lesson.status || "").toLowerCase() === "scheduled" && (
+                <div style={{ textAlign: "right" }}>
+                  {String(lesson.status || "").toLowerCase() === "scheduled" ? (
                     <button
                       type="button"
                       title="Iniciar aula agendada"
@@ -6568,80 +6640,85 @@ if (tab === "agenda") {
                         setShowLessonForm(true);
                         setTab("aulas");
                       }}
-                      style={{ margin: 0, padding: "7px 9px" }}
+                      style={{ margin: 0, whiteSpace: "nowrap" }}
                     >
-                      <Play size={15} />
+                      <Play size={15} style={{ verticalAlign: "middle", marginRight: "5px" }} />
+                      INICIAR
                     </button>
+                  ) : (
+                    <span style={{ fontSize: "11px", opacity: 0.6 }}>Sem ação</span>
                   )}
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </div>
 
+      <div className="panel" style={{ marginBottom: "14px" }}>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: "12px",
+          flexWrap: "wrap"
+        }}>
+          <div>
+            <h2 style={{ marginBottom: "4px" }}>Próximas provas</h2>
+            <p style={{ margin: 0, fontSize: "13px" }}>Compromissos de exame vinculados aos alunos.</p>
+          </div>
+        </div>
+
+        {provas.length === 0 ? (
+          <p>Nenhuma prova agendada.</p>
+        ) : (
+          <div style={{ display: "grid", gap: "8px" }}>
+            {provas.slice(0, 10).map(lesson => (
+              <div key={`exam-${lesson.id}`} style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: "12px",
+                alignItems: "center",
+                flexWrap: "wrap",
+                padding: "11px 12px",
+                border: "1px solid #dfe7f2",
+                borderRadius: "9px",
+                background: "#fff"
+              }}>
+                <div>
+                  <strong>{nomeAlunoAgenda(lesson)}</strong>
+                  <div style={{ fontSize: "12px", opacity: 0.72, marginTop: "3px" }}>
+                    {lesson.exam_type || "Prova"}{lesson.exam_location ? ` • ${lesson.exam_location}` : ""}
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <strong>{dataAgenda(lesson.exam_scheduled_at)}</strong>
+                  <div style={{ fontSize: "10px", opacity: 0.62 }}>DATA / HORA</div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
 
       <div className="panel">
-        <h2>Próximas provas</h2>
-        {(() => {
-          const provas = agendaLessons.filter(lesson => lesson.exam_scheduled_at).sort((a,b) => new Date(a.exam_scheduled_at) - new Date(b.exam_scheduled_at));
-          if (!provas.length) return <p>Nenhuma prova agendada.</p>;
-          return <div style={{display:"grid",gap:"8px"}}>
-            {provas.slice(0,10).map(lesson => (
-              <div key={`exam-${lesson.id}`} style={{padding:"10px 12px",border:"1px solid #d8e4f4",borderRadius:"8px",background:"#fff"}}>
-                <strong>{nomeAlunoAgenda(lesson)}</strong> — {lesson.exam_type || "Prova"}<br />
-                <small>{dataAgenda(lesson.exam_scheduled_at)}{lesson.exam_location ? ` • ${lesson.exam_location}` : ""}</small>
-              </div>
-            ))}
-          </div>;
-        })()}
-      </div>
-
-      <div className="panel">
-        <h2>Preparação da próxima aula</h2>
-
+        <h2 style={{ marginBottom: "5px" }}>Preparação da próxima aula</h2>
         <p>
-          As informações do HSI-DOTH-P deverão orientar a preparação
-          das próximas aulas, permitindo ao instrutor identificar
-          quais competências merecem maior atenção.
+          Use os registros do HSI-DOTH-P para orientar a preparação das próximas aulas e identificar competências que merecem maior atenção.
         </p>
-
         <div style={{
-          padding: "14px",
+          padding: "13px 14px",
           borderRadius: "10px",
           background: "#f7faff",
           border: "1px solid #d8e4f4"
         }}>
-          <strong>
-            Planejamento inteligente
-          </strong>
-
-          <p style={{
-            marginBottom: 0,
-            marginTop: "6px",
-            fontSize: "13px"
-          }}>
-            As recomendações serão apresentadas automaticamente
-            a partir dos registros existentes do aluno.
+          <strong>Planejamento inteligente</strong>
+          <p style={{ margin: "6px 0 0", fontSize: "13px" }}>
+            As recomendações serão apresentadas a partir dos registros existentes do aluno.
           </p>
         </div>
       </div>
-
-      <div className="panel">
-        <h2>Próximas atividades</h2>
-
-        {proximasAulas.length === 0 ? (
-          <p>
-            Nenhuma atividade futura registrada.
-          </p>
-        ) : (
-          <p>
-            Existem {proximasAulas.length} aula(s) programada(s)
-            para acompanhamento.
-          </p>
-        )}
-      </div>
-    </>
+    </div>
   );
 }
     const p = pages[tab];
