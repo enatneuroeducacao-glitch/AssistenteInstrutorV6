@@ -435,6 +435,8 @@ function StudentList({ user, onNewStudent, onSelectStudent }) {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
+  const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("TODAS");
 
   async function loadStudents() {
     setLoading(true);
@@ -449,10 +451,9 @@ function StudentList({ user, onNewStudent, onSelectStudent }) {
         .from("ai_students")
         .select("*")
         .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+        .order("full_name", { ascending: true });
 
       if (error) throw error;
-
       setStudents(data || []);
     } catch (error) {
       console.error("Erro ao carregar alunos:", error);
@@ -469,30 +470,145 @@ function StudentList({ user, onNewStudent, onSelectStudent }) {
     return () => window.removeEventListener("enat:refresh", handleRefresh);
   }, [user.id]);
 
+  const categories = Array.from(
+    new Set(
+      students
+        .map(student => String(student.category || "").trim().toUpperCase())
+        .filter(Boolean)
+    )
+  ).sort();
+
+  const normalizedSearch = search.trim().toLowerCase();
+
+  const filteredStudents = students.filter(student => {
+    const name = String(student.full_name || "").toLowerCase();
+    const cpf = String(student.cpf || "").toLowerCase();
+    const phone = String(student.phone || "").toLowerCase();
+    const category = String(student.category || "").trim().toUpperCase();
+
+    const matchesSearch =
+      !normalizedSearch ||
+      name.includes(normalizedSearch) ||
+      cpf.includes(normalizedSearch) ||
+      phone.includes(normalizedSearch);
+
+    const matchesCategory =
+      categoryFilter === "TODAS" || category === categoryFilter;
+
+    return matchesSearch && matchesCategory;
+  });
+
+  function initials(name) {
+    const parts = String(name || "Aluno").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "AL";
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
   return (
-    <>
-      <div className="panel">
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "12px",
-          flexWrap: "wrap"
-        }}>
+    <div>
+      <div
+        className="panel"
+        style={{
+          background: "linear-gradient(135deg, #f7faff 0%, #ffffff 72%)",
+          border: "1px solid #dfe7f2",
+          marginBottom: "14px"
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            gap: "16px",
+            flexWrap: "wrap"
+          }}
+        >
           <div>
-            <h2>Alunos cadastrados</h2>
-            <p>
-              Selecione um aluno para utilizar nas próximas etapas.
+            <div style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", color: "#52708f", marginBottom: "5px" }}>
+              GESTÃO DE ALUNOS
+            </div>
+            <h2 style={{ margin: 0, fontSize: "24px" }}>Alunos cadastrados</h2>
+            <p style={{ margin: "7px 0 0", maxWidth: "650px" }}>
+              Encontre rapidamente um aluno e use o cadastro nas aulas, na agenda, no HSI-DOTH-P e no RPA.
             </p>
           </div>
 
           <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
             <RefreshButton />
-            <button onClick={onNewStudent}>
+            <button type="button" onClick={onNewStudent}>
               + NOVO ALUNO
             </button>
           </div>
         </div>
+      </div>
+
+      {!loading && !msg && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+            gap: "10px",
+            marginBottom: "14px"
+          }}
+        >
+          <div className="panel" style={{ margin: 0, padding: "14px 16px" }}>
+            <div style={{ fontSize: "10px", fontWeight: 800, opacity: 0.62, letterSpacing: "0.06em" }}>TOTAL DE ALUNOS</div>
+            <div style={{ fontSize: "25px", fontWeight: 900, marginTop: "3px" }}>{students.length}</div>
+          </div>
+          <div className="panel" style={{ margin: 0, padding: "14px 16px" }}>
+            <div style={{ fontSize: "10px", fontWeight: 800, opacity: 0.62, letterSpacing: "0.06em" }}>CATEGORIAS CADASTRADAS</div>
+            <div style={{ fontSize: "25px", fontWeight: 900, marginTop: "3px" }}>{categories.length}</div>
+          </div>
+          <div className="panel" style={{ margin: 0, padding: "14px 16px" }}>
+            <div style={{ fontSize: "10px", fontWeight: 800, opacity: 0.62, letterSpacing: "0.06em" }}>EXIBINDO</div>
+            <div style={{ fontSize: "25px", fontWeight: 900, marginTop: "3px" }}>{filteredStudents.length}</div>
+          </div>
+        </div>
+      )}
+
+      <div className="panel" style={{ marginBottom: "14px" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(220px, 1fr) 180px",
+            gap: "10px",
+            alignItems: "end"
+          }}
+        >
+          <label style={{ margin: 0 }}>
+            Buscar aluno
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Nome, CPF ou telefone"
+            />
+          </label>
+
+          <label style={{ margin: 0 }}>
+            Categoria
+            <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
+              <option value="TODAS">Todas</option>
+              {categories.map(category => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {(search || categoryFilter !== "TODAS") && (
+          <div style={{ marginTop: "9px", fontSize: "12px", opacity: 0.7 }}>
+            {filteredStudents.length} aluno(s) encontrado(s).
+            <button
+              type="button"
+              className="link"
+              onClick={() => { setSearch(""); setCategoryFilter("TODAS"); }}
+              style={{ marginLeft: "6px" }}
+            >
+              LIMPAR FILTROS
+            </button>
+          </div>
+        )}
       </div>
 
       {loading && (
@@ -508,50 +624,148 @@ function StudentList({ user, onNewStudent, onSelectStudent }) {
       )}
 
       {!loading && !msg && students.length === 0 && (
-        <div className="panel">
-          <h2>Nenhum aluno cadastrado</h2>
-          <p>
-            Cadastre o primeiro aluno para começar usando o botão acima.
+        <div
+          className="panel"
+          style={{
+            textAlign: "center",
+            padding: "42px 24px",
+            background: "linear-gradient(135deg, #f8fbff, #ffffff)"
+          }}
+        >
+          <div style={{ fontSize: "36px", marginBottom: "8px" }}>👤</div>
+          <h2 style={{ marginBottom: "6px" }}>Nenhum aluno cadastrado</h2>
+          <p style={{ maxWidth: "520px", margin: "0 auto 18px" }}>
+            Cadastre o primeiro aluno para começar a acompanhar aulas, evolução, HSI-DOTH-P e RPA.
           </p>
+          <button type="button" onClick={onNewStudent}>+ CADASTRAR PRIMEIRO ALUNO</button>
         </div>
       )}
 
-      {!loading && students.length > 0 && (
-        <div className="grid">
-          {students.map(student => (
-            <div className="panel" key={student.id}>
-              <h2>{student.full_name}</h2>
+      {!loading && !msg && students.length > 0 && filteredStudents.length === 0 && (
+        <div className="panel" style={{ textAlign: "center", padding: "32px 20px" }}>
+          <h2>Nenhum resultado</h2>
+          <p>Não encontramos alunos com os filtros selecionados.</p>
+          <button
+            type="button"
+            className="link"
+            onClick={() => { setSearch(""); setCategoryFilter("TODAS"); }}
+          >
+            LIMPAR FILTROS
+          </button>
+        </div>
+      )}
 
-              <p>
-                <strong>CPF:</strong>{" "}
-                {student.cpf || "Não informado"}
-              </p>
+      {!loading && !msg && filteredStudents.length > 0 && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+            gap: "12px"
+          }}
+        >
+          {filteredStudents.map(student => {
+            const category = String(student.category || "").trim().toUpperCase();
 
-              <p>
-                <strong>Telefone:</strong>{" "}
-                {student.phone || "Não informado"}
-              </p>
-
-              <p>
-                <strong>Categoria:</strong>{" "}
-                {student.category || "Não informada"}
-              </p>
-
-              <p>
-                <strong>Aulas planejadas:</strong>{" "}
-                {student.lesson_goal ?? "Não informado"}
-              </p>
-
-              <button
-                onClick={() => onSelectStudent(student)}
+            return (
+              <article
+                className="panel"
+                key={student.id}
+                style={{
+                  margin: 0,
+                  padding: "16px",
+                  border: "1px solid #dfe7f2",
+                  transition: "box-shadow 0.15s ease, transform 0.15s ease"
+                }}
               >
-                SELECIONAR ALUNO
-              </button>
-            </div>
-          ))}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    marginBottom: "14px"
+                  }}
+                >
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      width: "46px",
+                      height: "46px",
+                      borderRadius: "12px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background: "#eaf5ff",
+                      color: "#1769aa",
+                      fontWeight: 900,
+                      fontSize: "14px",
+                      flexShrink: 0
+                    }}
+                  >
+                    {initials(student.full_name)}
+                  </div>
+
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <h3 style={{ margin: 0, fontSize: "17px", lineHeight: 1.2 }}>
+                      {student.full_name}
+                    </h3>
+                    <div style={{ display: "flex", gap: "6px", alignItems: "center", flexWrap: "wrap", marginTop: "6px" }}>
+                      <span style={{
+                        display: "inline-flex",
+                        padding: "4px 7px",
+                        borderRadius: "999px",
+                        background: "#f0f5fa",
+                        fontSize: "10px",
+                        fontWeight: 800
+                      }}>
+                        CNH {category || "—"}
+                      </span>
+                      {student.lesson_goal != null && (
+                        <span style={{ fontSize: "11px", opacity: 0.7 }}>
+                          {student.lesson_goal} aula(s) planejada(s)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "9px",
+                    padding: "11px 0",
+                    borderTop: "1px solid #edf1f5",
+                    borderBottom: "1px solid #edf1f5",
+                    marginBottom: "12px"
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: "10px", opacity: 0.62 }}>CPF</div>
+                    <div style={{ fontSize: "12px", fontWeight: 650, marginTop: "3px", overflowWrap: "anywhere" }}>
+                      {student.cpf || "Não informado"}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "10px", opacity: 0.62 }}>TELEFONE</div>
+                    <div style={{ fontSize: "12px", fontWeight: 650, marginTop: "3px", overflowWrap: "anywhere" }}>
+                      {student.phone || "Não informado"}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onSelectStudent(student)}
+                  style={{ width: "100%" }}
+                >
+                  USAR ALUNO NAS AULAS
+                </button>
+              </article>
+            );
+          })}
         </div>
       )}
-    </>
+    </div>
   );
 }
 function AgendaForm({ user, onBack, onScheduled }) {
