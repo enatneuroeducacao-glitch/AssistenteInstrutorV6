@@ -1334,210 +1334,157 @@ function LessonForm({ user, onBack, onStarted, scheduledLesson = null }) {
   }
 
   return (
-    <div>
-      <div className="panel" style={{
-        background: "linear-gradient(135deg, #f7faff 0%, #ffffff 70%)",
-        border: "1px solid #dfe7f2"
-      }}>
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "16px",
-          flexWrap: "wrap"
-        }}>
+    <div style={{ maxWidth: "1180px", margin: "0 auto" }}>
+      <div className="panel" style={{padding:"24px",marginBottom:"16px",background:"linear-gradient(135deg,#f7fbff 0%,#ffffff 68%)",border:"1px solid #dbe6f2"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:"18px",flexWrap:"wrap"}}>
           <div>
-            <div style={{ fontSize: "11px", fontWeight: 800, letterSpacing: "0.08em", opacity: 0.65 }}>
-              AULAS / NOVA AULA
-            </div>
-            <h1 style={{ marginBottom: "6px" }}>Iniciar nova aula</h1>
-            <p style={{ margin: 0 }}>Preencha os dados abaixo. Depois, o sistema conduzirá você pelas cinco fases da aula.</p>
+            <div style={{fontSize:"11px",fontWeight:900,letterSpacing:".09em",color:"#52708f",marginBottom:"6px"}}>AULAS / NOVA AULA</div>
+            <h1 style={{margin:"0 0 7px",fontSize:"28px"}}>Iniciar nova aula</h1>
+            <p style={{margin:0,color:"#5f6b7a",lineHeight:1.55,maxWidth:"720px"}}>Configure os dados essenciais da aula. Depois de iniciar, o NeuroDrive conduzirá o instrutor pelas cinco fases.</p>
           </div>
-          <button type="button" onClick={onBack}>VOLTAR</button>
+          <div style={{display:"flex",gap:"8px",alignItems:"center",flexWrap:"wrap"}}>
+            <RefreshButton />
+            <button type="button" className="secondary" onClick={onBack}>VOLTAR</button>
+          </div>
         </div>
       </div>
 
-      <div className="panel">
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-          gap: "10px"
-        }}>
+      <div className="panel" style={{padding:"14px 16px",marginBottom:"16px",background:"#fff",border:"1px solid #dfe7f2"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:"8px"}}>
           {[
-            ["1", "ALUNO", "Selecione quem fará a aula"],
-            ["2", "VEÍCULO", "Escolha o veículo utilizado"],
-            ["3", "QUILOMETRAGEM", "Informe o KM inicial"]
-          ].map(([number, title, description]) => (
-            <div key={number} style={{
-              padding: "12px",
-              border: "1px solid #e1e7ef",
-              borderRadius: "10px",
-              background: "#fbfcfe"
-            }}>
-              <div style={{ fontSize: "11px", fontWeight: 800, opacity: 0.6 }}>ETAPA {number}</div>
-              <div style={{ marginTop: "4px", fontWeight: 800 }}>{title}</div>
-              <div style={{ marginTop: "4px", fontSize: "11px", opacity: 0.7 }}>{description}</div>
+            ["01","IDENTIFICAÇÃO","Aluno e veículo"],
+            ["02","QUILOMETRAGEM","KM inicial"],
+            ["03","OBJETIVO","Foco pedagógico"],
+            ["04","PROVA","Opcional"]
+          ].map(([number,title,description], index) => (
+            <div key={number} style={{display:"flex",alignItems:"center",gap:"10px",padding:"10px 12px",borderRadius:"10px",background:index === 0 ? "#eef7ff" : "#f8fafc",border:"1px solid " + (index === 0 ? "#cfe5f7" : "#e5ebf2")}}>
+              <div style={{width:"30px",height:"30px",borderRadius:"50%",display:"grid",placeItems:"center",background:index === 0 ? "#1f72c9" : "#e7edf4",color:index === 0 ? "#fff" : "#607086",fontWeight:900,fontSize:"11px",flex:"0 0 auto"}}>{number}</div>
+              <div>
+                <div style={{fontSize:"11px",fontWeight:900,color:"#18345f"}}>{title}</div>
+                <div style={{fontSize:"10px",color:"#748397",marginTop:"2px"}}>{description}</div>
+              </div>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="panel">
-        <h2 style={{ marginBottom: "4px" }}>1. Identificação da aula</h2>
-        <p style={{ marginTop: 0 }}>Defina aluno e veículo antes de iniciar.</p>
-
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-          gap: "14px"
-        }}>
-          <div>
-            <label>Aluno</label>
-            <select value={studentId} onChange={(e) => setStudentId(e.target.value)}>
-              <option value="">Selecione o aluno</option>
-              {students.map((student) => (
-                <option key={student.id} value={student.id}>{student.full_name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label>Veículo</label>
-            <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
-              <option value="">Selecione o veículo</option>
-              {vehicles.map((vehicle) => (
-                <option key={vehicle.id} value={vehicle.id}>
-                  {vehicle.brand} {vehicle.model} — {vehicle.plate}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {studentId && (
-          <div
-            style={{
-              marginTop: "12px",
-              padding: "12px",
-              border: "1px solid #d8e4f4",
-              borderRadius: "8px",
-              background: "#f7faff"
-            }}
-          >
-            <label>
-              <strong>Categoria da aula</strong>
-
-              <select
-                value={lessonCategory}
-                onChange={(e) => setLessonCategory(e.target.value)}
-                required
-                style={{ marginTop: "6px" }}
-              >
-                <option value="">Selecione a categoria</option>
-                <option value="A">A</option>
-                <option value="B">B</option>
-                <option value="C">C</option>
-                <option value="D">D</option>
-                <option value="E">E</option>
-              </select>
-            </label>
-
-            {lessonCategory && (
-              <small
-                style={{
-                  display: "block",
-                  marginTop: "6px"
-                }}
-              >
-                Categoria selecionada:{" "}
-                <strong>{lessonCategory}</strong>.
-                Esta categoria será registrada especificamente
-                nesta aula e no RPA.
-              </small>
+      <div style={{display:"grid",gridTemplateColumns:"minmax(0,1.7fr) minmax(300px,.8fr)",gap:"16px",alignItems:"start"}}>
+        <div>
+          <div className="panel" style={{padding:"22px",marginBottom:"16px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"12px",marginBottom:"16px"}}>
+              <div>
+                <div style={{fontSize:"10px",fontWeight:900,letterSpacing:".08em",color:"#52708f"}}>ETAPA 1</div>
+                <h2 style={{margin:"4px 0 5px"}}>Identificação da aula</h2>
+                <p style={{margin:0,color:"#6d7885",fontSize:"13px"}}>Escolha quem fará a aula e qual veículo será utilizado.</p>
+              </div>
+              <div style={{fontSize:"28px"}} aria-hidden="true">🚗</div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:"14px"}}>
+              <label>Aluno
+                <select value={studentId} onChange={(e) => setStudentId(e.target.value)}>
+                  <option value="">Selecione o aluno</option>
+                  {students.map((student) => <option key={student.id} value={student.id}>{student.full_name}</option>)}
+                </select>
+              </label>
+              <label>Veículo
+                <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
+                  <option value="">Selecione o veículo</option>
+                  {vehicles.map((vehicle) => <option key={vehicle.id} value={vehicle.id}>{vehicle.brand} {vehicle.model} — {vehicle.plate}</option>)}
+                </select>
+              </label>
+            </div>
+            {studentId && (
+              <div style={{marginTop:"14px",padding:"14px",borderRadius:"10px",background:"#f7fbff",border:"1px solid #d8e7f5"}}>
+                <label style={{fontWeight:800}}>Categoria da aula
+                  <select value={lessonCategory} onChange={(e) => setLessonCategory(e.target.value)} required style={{marginTop:"7px"}}>
+                    <option value="">Selecione a categoria</option>
+                    <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option>
+                  </select>
+                </label>
+                {lessonCategory && <div style={{marginTop:"7px",fontSize:"12px",color:"#5f6b7a"}}>Categoria registrada nesta aula: <strong>{lessonCategory}</strong></div>}
+              </div>
             )}
           </div>
-        )}
-      </div>
 
-      <div className="panel">
-        <h2 style={{ marginBottom: "4px" }}>2. Quilometragem</h2>
-        <p style={{ marginTop: 0 }}>Registre o odômetro no momento do início da aula.</p>
-        <div style={{ maxWidth: "360px" }}>
-          <label>KM inicial</label>
-          <input
-            type="number"
-            min="0"
-            step="0.1"
-            value={kmStart}
-            onChange={(e) => setKmStart(e.target.value)}
-            placeholder="Ex.: 45230"
-          />
-        </div>
-      </div>
-
-      <div className="panel">
-        <h2 style={{ marginBottom: "4px" }}>3. Objetivo da aula</h2>
-        <p style={{ marginTop: 0 }}>Defina o foco principal que deverá ser observado durante a aula.</p>
-        <textarea
-          rows="4"
-          value={objective}
-          onChange={(e) => setObjective(e.target.value)}
-          placeholder="Ex.: trabalhar estacionamento, saída em aclive, percepção de risco..."
-        />
-      </div>
-
-      <div className="panel" style={{background:"#f7faff",border:"1px solid #d8e4f4"}}>
-        <h2 style={{ marginBottom: "4px" }}>4. Agendamento da prova</h2>
-        <label style={{display:"flex",alignItems:"center",gap:"8px",fontWeight:800}}>
-          <input type="checkbox" checked={scheduleExam} onChange={e => setScheduleExam(e.target.checked)} />
-          Agendar prova para este aluno
-        </label>
-        {scheduleExam && (
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:"12px",marginTop:"12px"}}>
-            <label>Tipo de prova
-              <select value={examType} onChange={e => setExamType(e.target.value)}>
-                <option value="EXAME_PRATICO">Exame prático</option>
-                <option value="EXAME_TEORICO">Exame teórico</option>
-                <option value="REEXAME_PRATICO">Reexame prático</option>
-                <option value="OUTRO">Outro</option>
-              </select>
-            </label>
-            <label>Data e horário
-              <input type="datetime-local" value={examScheduledAt} onChange={e => setExamScheduledAt(e.target.value)} />
-            </label>
-            <label>Local
-              <input value={examLocation} onChange={e => setExamLocation(e.target.value)} placeholder="Local da prova" />
-            </label>
-          </div>
-        )}
-      </div>
-
-      <div className="panel" style={{
-        background: "#f7faff",
-        border: "1px solid #d8e4f4"
-      }}>
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: "12px",
-          flexWrap: "wrap"
-        }}>
-          <div>
-            <div style={{ fontWeight: 800 }}>Pronto para começar?</div>
-            <div style={{ fontSize: "12px", marginTop: "4px", opacity: 0.75 }}>
-              A aula será criada na fase 1 — Preparação.
+          <div className="panel" style={{padding:"22px",marginBottom:"16px"}}>
+            <div style={{fontSize:"10px",fontWeight:900,letterSpacing:".08em",color:"#52708f"}}>ETAPA 2</div>
+            <h2 style={{margin:"4px 0 5px"}}>Quilometragem</h2>
+            <p style={{margin:"0 0 15px",color:"#6d7885",fontSize:"13px"}}>Registre o odômetro no momento em que a aula começar.</p>
+            <div style={{maxWidth:"390px"}}>
+              <label>KM inicial
+                <input type="number" min="0" step="0.1" value={kmStart} onChange={(e) => setKmStart(e.target.value)} placeholder="Ex.: 45230" />
+              </label>
             </div>
           </div>
-          <button type="button" onClick={startLesson} disabled={busy}>
-            {busy ? "INICIANDO..." : "INICIAR AULA"}
-          </button>
+
+          <div className="panel" style={{padding:"22px",marginBottom:"16px"}}>
+            <div style={{fontSize:"10px",fontWeight:900,letterSpacing:".08em",color:"#52708f"}}>ETAPA 3</div>
+            <h2 style={{margin:"4px 0 5px"}}>Objetivo da aula</h2>
+            <p style={{margin:"0 0 15px",color:"#6d7885",fontSize:"13px"}}>Defina o foco pedagógico que deverá orientar a observação durante a aula.</p>
+            <textarea rows="4" value={objective} onChange={(e) => setObjective(e.target.value)} placeholder="Ex.: trabalhar estacionamento, saída em aclive, percepção de risco..." />
+          </div>
+
+          <div className="panel" style={{padding:"22px",marginBottom:"16px",background:"#fbfdff",border:"1px solid #dce7f3"}}>
+            <div style={{fontSize:"10px",fontWeight:900,letterSpacing:".08em",color:"#52708f"}}>ETAPA 4</div>
+            <h2 style={{margin:"4px 0 5px"}}>Agendamento da prova</h2>
+            <p style={{margin:"0 0 14px",color:"#6d7885",fontSize:"13px"}}>Opcional. Use esta seção para deixar a prova registrada junto à aula.</p>
+            <label style={{display:"flex",alignItems:"center",gap:"9px",fontWeight:800,cursor:"pointer"}}>
+              <input type="checkbox" checked={scheduleExam} onChange={e => setScheduleExam(e.target.checked)} />
+              Agendar prova para este aluno
+            </label>
+            {scheduleExam && (
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:"12px",marginTop:"14px"}}>
+                <label>Tipo de prova
+                  <select value={examType} onChange={e => setExamType(e.target.value)}>
+                    <option value="EXAME_PRATICO">Exame prático</option><option value="EXAME_TEORICO">Exame teórico</option><option value="REEXAME_PRATICO">Reexame prático</option><option value="OUTRO">Outro</option>
+                  </select>
+                </label>
+                <label>Data e horário
+                  <input type="datetime-local" value={examScheduledAt} onChange={e => setExamScheduledAt(e.target.value)} />
+                </label>
+                <label>Local
+                  <input value={examLocation} onChange={e => setExamLocation(e.target.value)} placeholder="Local da prova" />
+                </label>
+              </div>
+            )}
+          </div>
         </div>
 
-        {msg && <p className="msg" style={{ marginBottom: 0 }}>{msg}</p>}
+        <aside>
+          <div className="panel" style={{padding:"20px",position:"sticky",top:"18px",background:"linear-gradient(180deg,#0b2340 0%,#12375f 100%)",color:"#fff",border:"none",boxShadow:"0 14px 30px rgba(16,49,82,.18)"}}>
+            <div style={{fontSize:"10px",fontWeight:900,letterSpacing:".09em",color:"#8bd8ff"}}>RESUMO DA AULA</div>
+            <h2 style={{margin:"6px 0 16px",color:"#fff"}}>Antes de começar</h2>
+            <div style={{display:"grid",gap:"10px"}}>
+              {[
+                ["ALUNO", students.find(s => s.id === studentId)?.full_name || "Não selecionado"],
+                ["VEÍCULO", vehicles.find(v => v.id === vehicleId) ? (vehicles.find(v => v.id === vehicleId).brand + " " + vehicles.find(v => v.id === vehicleId).model + " — " + vehicles.find(v => v.id === vehicleId).plate) : "Não selecionado"],
+                ["CATEGORIA", lessonCategory || "Não definida"],
+                ["KM INICIAL", kmStart || "Não informado"],
+                ["OBJETIVO", objective?.trim() || "Não definido"],
+                ["PROVA", scheduleExam ? "Agendada" : "Não agendada"]
+              ].map(([label,value]) => (
+                <div key={label} style={{padding:"10px 0",borderBottom:"1px solid rgba(255,255,255,.12)"}}>
+                  <div style={{fontSize:"9px",fontWeight:900,letterSpacing:".07em",color:"#9db4cb"}}>{label}</div>
+                  <div style={{fontSize:"13px",fontWeight:800,marginTop:"3px",lineHeight:1.35,color:"#fff"}}>{value}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{marginTop:"18px",padding:"13px",borderRadius:"10px",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.12)"}}>
+              <div style={{fontSize:"10px",fontWeight:900,letterSpacing:".06em",color:"#8bd8ff"}}>PRÓXIMO PASSO</div>
+              <div style={{fontWeight:800,marginTop:"4px"}}>Fase 1 — Preparação</div>
+              <div style={{fontSize:"11px",lineHeight:1.45,color:"#c8d7e6",marginTop:"4px"}}>Ao iniciar, a aula será criada e o fluxo pedagógico será liberado em sequência.</div>
+            </div>
+            <button type="button" onClick={startLesson} disabled={busy} style={{width:"100%",marginTop:"16px",padding:"13px 16px",fontSize:"14px",fontWeight:900}}>
+              {busy ? "INICIANDO..." : "▶ INICIAR AULA"}
+            </button>
+            <button type="button" className="link" onClick={onBack} style={{width:"100%",marginTop:"8px",color:"#dcecff"}}>VOLTAR SEM INICIAR</button>
+            {msg && <p className="msg" style={{marginTop:"14px",marginBottom:0,color:"#fff"}}>{msg}</p>}
+          </div>
+        </aside>
       </div>
     </div>
   );
+
 }
 
 const LESSON_PHASES = [
