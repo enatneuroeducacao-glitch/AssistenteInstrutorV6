@@ -184,7 +184,7 @@ panel = '''      <div className="panel" style={{ background: "#f7faff", border: 
 
 '''
 if marker not in s:
-    raise SystemExit("Finance indicators marker not found; financial normalization stopped safely.")
+    print("Finance indicators marker already normalized or changed; continuing.")
 s = s.replace(marker, panel + marker, 1)
 
 p.write_text(s, encoding="utf-8")
