@@ -135,7 +135,7 @@ export default function RPAForm({ user, onBack }) {
     const report = reports.find((item) => String(item.student_id) === String(selectedStudentId));
     setSynthesis(buildAutomaticSynthesis(lessons, report, student));
     setContinuityPlan(report?.continuity_plan || "");
-  }, [selectedStudentId, reports]);
+  }, [selectedStudentId, reports, lessons, students]);
 
   async function changeStudent(value) {
     setSelectedStudentId(value);
