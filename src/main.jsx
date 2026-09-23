@@ -6785,7 +6785,6 @@ if (tab === "aulas" && !showLessonForm && !showLessonHistory && !activeLesson) {
           </div>
 
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-            <RefreshButton />
             <button type="button" onClick={() => setShowLessonForm(true)}>+ INICIAR AULA</button>
             <button
               type="button"
