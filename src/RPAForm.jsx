@@ -170,10 +170,10 @@ export default function RPAForm({ user, onBack }) {
     border: "1px solid #dce5ef",
     borderRadius: "12px",
     background: "#fff",
-    padding: "14px 16px"
+    padding: "12px 14px"
   };
   const muted = { color: "#60738d", fontSize: "12px" };
-  const metric = { ...card, padding: "11px 13px" };
+  const metric = { ...card, padding: "9px 11px" };
 
   return (
     <div className="app">
@@ -201,13 +201,13 @@ export default function RPAForm({ user, onBack }) {
             </select>
           </div>
           {student && (
-            <div style={{ ...metric, minWidth: "150px" }}>
+            <div style={{ ...metric, minWidth: "145px", padding: "10px 12px" }}>
               <small style={muted}>STATUS RPA</small>
               <strong style={{ display: "block", marginTop: "4px" }}>{report?.status || "NÃO INICIADO"}</strong>
             </div>
           )}
           {student && report && (
-            <div style={{ ...metric, minWidth: "130px" }}>
+            <div style={{ ...metric, minWidth: "125px", padding: "10px 12px" }}>
               <small style={muted}>HSI-DOTH-P</small>
               <strong style={{ display: "block", marginTop: "4px" }}>{report.latest_hsi_score != null ? `${Number(report.latest_hsi_score).toFixed(1)} / 100` : "—"}</strong>
             </div>
@@ -272,7 +272,7 @@ export default function RPAForm({ user, onBack }) {
                             <td style={{ padding: "7px", borderTop: "1px solid #edf0f4" }}>{formatDate(item.started_at)}</td>
                             <td style={{ padding: "7px", borderTop: "1px solid #edf0f4" }}>{item.cnh_category || student.category || "—"}</td>
                             <td style={{ padding: "7px", borderTop: "1px solid #edf0f4" }}>{item.km_start ?? "—"}{item.km_end != null ? ` → ${item.km_end}` : ""}</td>
-                            <td style={{ padding: "7px", borderTop: "1px solid #edf0f4" }}>{item.status}</td>
+                            <td style={{ padding: "7px", borderTop: "1px solid #edf0f4" }}>{String(item.status || "").toLowerCase() === "completed" ? "Concluída" : String(item.status || "").toLowerCase() === "running" ? "Em andamento" : String(item.status || "").toLowerCase() === "paused" ? "Pausada" : (item.status || "—")}</td>
                           </tr>
                         ))}</tbody>
                       </table>
@@ -292,10 +292,10 @@ export default function RPAForm({ user, onBack }) {
                     </div>
                   )}
                   <label>Síntese / observações
-                    <textarea rows="4" value={synthesis} onChange={(e) => setSynthesis(e.target.value)} placeholder="Complemento da síntese do acompanhamento." />
+                    <textarea style={{ width: "100%", minHeight: "96px", boxSizing: "border-box", resize: "vertical", marginTop: "5px" }} rows="4" value={synthesis} onChange={(e) => setSynthesis(e.target.value)} placeholder="Complemento da síntese do acompanhamento." />
                   </label>
                   <label style={{ marginTop: "9px" }}>Plano de continuidade
-                    <div style={{ minHeight: "80px", marginTop: "5px", padding: "11px 13px", border: "1px solid #d8e4f4", borderRadius: "10px", background: "#f7faff", color: "#243b5a", fontSize: "13px", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
+                    <div style={{ minHeight: "76px", width: "100%", boxSizing: "border-box", marginTop: "5px", padding: "10px 12px", border: "1px solid #d8e4f4", borderRadius: "10px", background: "#f7faff", color: "#243b5a", fontSize: "13px", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>
                       {continuityPlan || "Plano de continuidade ainda não gerado."}
                     </div>
                   </label>
