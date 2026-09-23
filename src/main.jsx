@@ -1335,64 +1335,6 @@ function LessonForm({ user, onBack, onStarted, scheduledLesson = null }) {
 
   return (
     <div>
-      {!readOnly && !isFinished && (
-        <div style={{
-          position: "sticky",
-          top: "8px",
-          zIndex: 20,
-          marginBottom: "12px",
-          padding: "14px 16px",
-          borderRadius: "12px",
-          background: status === "paused" ? "#eef6ff" : "#fff8e1",
-          border: status === "paused" ? "2px solid #90caf9" : "2px solid #f9a825",
-          boxShadow: "0 8px 24px rgba(15, 35, 60, 0.12)"
-        }}>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(220px, 1.4fr) minmax(150px, 1fr) minmax(120px, 0.8fr) auto",
-            gap: "12px",
-            alignItems: "center"
-          }}>
-            <div>
-              <div style={{ fontSize: "10px", fontWeight: 900, letterSpacing: "0.08em", color: status === "paused" ? "#0d47a1" : "#8a5a00" }}>
-                {status === "paused" ? "🔵 AULA PAUSADA" : "🔴 AULA EM ANDAMENTO"}
-              </div>
-              <div style={{ marginTop: "4px", fontSize: "18px", fontWeight: 900 }}>
-                {currentLesson?.ai_students?.full_name || currentLesson?.student_name || "Aluno selecionado"}
-              </div>
-              <div style={{ marginTop: "3px", fontSize: "11px", opacity: 0.72 }}>
-                CNH {currentLesson?.cnh_category || currentLesson?.ai_students?.category || "—"} · {currentLesson?.ai_vehicles ? `${currentLesson.ai_vehicles.brand || ""} ${currentLesson.ai_vehicles.model || ""}`.trim() : "Veículo selecionado"}
-              </div>
-            </div>
-
-            <div>
-              <div style={{ fontSize: "10px", fontWeight: 800, opacity: 0.62 }}>FASE ATUAL</div>
-              <div style={{ marginTop: "4px", fontSize: "15px", fontWeight: 900 }}>
-                {currentPhase}/5 — {lessonPhaseLabel(currentPhase)}
-              </div>
-            </div>
-
-            <div>
-              <div style={{ fontSize: "10px", fontWeight: 800, opacity: 0.62 }}>KM INICIAL</div>
-              <div style={{ marginTop: "4px", fontSize: "15px", fontWeight: 900 }}>{currentLesson?.km_start ?? "—"}</div>
-            </div>
-
-            <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end", flexWrap: "wrap" }}>
-              {status === "paused" ? (
-                <button type="button" onClick={resumeLesson} disabled={busy}>RETOMAR AULA</button>
-              ) : (
-                <button type="button" onClick={pauseLesson} disabled={busy}>PAUSAR AULA</button>
-              )}
-              {currentPhase < 5 && (
-                <button type="button" onClick={advancePhase} disabled={busy || status === "paused"}>
-                  CONCLUIR FASE
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="panel" style={{
         background: "linear-gradient(135deg, #f7faff 0%, #ffffff 70%)",
         border: "1px solid #dfe7f2"
