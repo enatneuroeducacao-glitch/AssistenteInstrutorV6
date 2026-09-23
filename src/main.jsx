@@ -1660,6 +1660,7 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
   const [message, setMessage] = useState("");
   const [kmFinal, setKmFinal] = useState(lesson?.km_end ?? "");
   const [notes, setNotes] = useState(lesson?.notes ?? "");
+  const [safeStopAt, setSafeStopAt] = useState(lesson?.safe_stop_at ?? null);
 
   const [evaluation, setEvaluation] = useState({
     attention: Number(lesson?.pedagogical_evaluation?.attention || 0),
@@ -1682,6 +1683,7 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
     setCurrentLesson(lesson);
     setKmFinal(lesson?.km_end ?? "");
     setNotes(lesson?.notes ?? "");
+    setSafeStopAt(lesson?.safe_stop_at ?? null);
     setEvaluation({
       attention: Number(lesson?.pedagogical_evaluation?.attention || 0),
       risk_perception: Number(lesson?.pedagogical_evaluation?.risk_perception || 0),
@@ -1803,7 +1805,12 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
     // A fase 4 — Avaliação — só libera a Parada Segura depois que
     // os dois conjuntos de avaliação foram preenchidos.
     if (currentPhase === 4) {
-      if (!evaluationComplete) {
+      if (!safeStopAt) {
+      setMessage("Registre a Parada Segura antes de concluir a aula.");
+      return;
+    }
+
+    if (!evaluationComplete) {
         setMessage("Preencha os cinco fatores da avaliação andragógica antes de avançar para a Parada Segura.");
         return;
       }
@@ -1818,6 +1825,21 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
       { phase: nextPhase, status: "running" },
       `Fase atualizada para ${lessonPhaseLabel(nextPhase)}.`
     );
+  }
+
+  async function markSafeStop() {
+    if (readOnly || busy || isFinished || status === "paused") return;
+    if (currentPhase !== 5) {
+      setMessage("A Parada Segura só pode ser registrada na fase 5.");
+      return;
+    }
+    if (safeStopAt) return;
+    const registeredAt = new Date().toISOString();
+    const updated = await updateLesson(
+      { safe_stop_at: registeredAt },
+      "Parada Segura registrada. Agora você pode concluir a aula."
+    );
+    if (updated) setSafeStopAt(updated.safe_stop_at || registeredAt);
   }
 
   async function pauseLesson() {
@@ -1952,7 +1974,7 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
 
     // A Parada Segura é registrada no mesmo momento da conclusão:
     // fase 5 + KM final + horário de encerramento ficam gravados em uma única operação.
-    const paradaSeguraNote = `[PARADA SEGURA] Registrada em ${new Date(endedAt).toLocaleString("pt-BR")} | KM final: ${finalKm}`;
+    const paradaSeguraNote = `[PARADA SEGURA] Registrada em ${safeStopAt ? new Date(safeStopAt).toLocaleString("pt-BR") : new Date(endedAt).toLocaleString("pt-BR")} | KM final: ${finalKm}`;
     const patch = {
       phase: 5,
       status: "completed",
@@ -2061,7 +2083,7 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
       <div className="panel" style={{padding:"12px 16px",marginBottom:"10px",position:"sticky",top:0,zIndex:30,background:"rgba(255,255,255,.97)",backdropFilter:"blur(8px)",border:"1px solid #dbe5f0"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:"12px",flexWrap:"wrap"}}>
           <div><div style={{fontSize:"10px",fontWeight:900,letterSpacing:".08em",color:"#60758c"}}>AULAS / EM ANDAMENTO</div><h1 style={{margin:"2px 0 0",fontSize:"22px"}}>{readOnly ? "Visualização da aula" : "Aula em andamento"}</h1></div>
-          {!readOnly && !isFinished ? <div style={{display:"flex",gap:"6px",alignItems:"center",flexWrap:"wrap"}}><RefreshButton />{status==="paused" ? <button type="button" onClick={resumeLesson} disabled={busy}>▶ RETOMAR</button> : <button type="button" onClick={pauseLesson} disabled={busy}>⏸ PAUSAR</button>}<button type="button" onClick={advancePhase} disabled={busy||status==="paused"||currentPhase>=5} style={{fontWeight:900}}>{currentPhase>=5 ? "FASE 5 — PARADA SEGURA" : "✓ AVANÇAR →"}</button></div> : <button type="button" onClick={onBack}>VOLTAR</button>}
+          {!readOnly && !isFinished ? <div style={{display:"flex",gap:"6px",alignItems:"center",flexWrap:"wrap"}}><RefreshButton />{status==="paused" ? <button type="button" onClick={resumeLesson} disabled={busy}>▶ RETOMAR</button> : <button type="button" onClick={pauseLesson} disabled={busy}>⏸ PAUSAR</button>}<button type="button" onClick={currentPhase>=5 ? markSafeStop : advancePhase} disabled={busy||status==="paused"||isFinished||(currentPhase>=5&&!!safeStopAt)} style={{fontWeight:900}}>{currentPhase>=5 ? (safeStopAt ? "✓ PARADA SEGURA REGISTRADA" : "REGISTRAR PARADA SEGURA") : "✓ AVANÇAR →"}</button></div> : <button type="button" onClick={onBack}>VOLTAR</button>}
         </div>
       </div>
 
