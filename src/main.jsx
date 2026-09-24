@@ -2499,7 +2499,7 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
     </div>
   );
 }
-function LessonHistory({ user, onBack, onSelect }) {
+function LessonHistory({ user, selectedStudent = null, onBack, onSelect }) {
   const [lessons, setLessons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState("");
@@ -2512,14 +2512,22 @@ function LessonHistory({ user, onBack, onSelect }) {
     try {
       if (!supabase) throw new Error("Supabase não está configurado.");
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("ai_lessons")
         .select(`
           *,
           ai_students(full_name),
           ai_vehicles(brand, model, plate)
         `)
-        .eq("user_id", user.id)
+        .eq("user_id", user.id);
+
+      // Ao consultar o histórico a partir de um aluno específico,
+      // a chave de vínculo é sempre o ID do aluno.
+      if (selectedStudent?.id) {
+        query = query.eq("student_id", selectedStudent.id);
+      }
+
+      const { data, error } = await query
         .order("started_at", { ascending: false });
 
       if (error) throw error;
@@ -2537,7 +2545,7 @@ function LessonHistory({ user, onBack, onSelect }) {
     const handleRefresh = () => loadLessons();
     window.addEventListener("enat:refresh", handleRefresh);
     return () => window.removeEventListener("enat:refresh", handleRefresh);
-  }, [user.id]);
+  }, [user.id, selectedStudent?.id]);
 
   async function deleteLesson(lesson) {
     if (!supabase || !lesson?.id) return;
@@ -2697,8 +2705,16 @@ function LessonHistory({ user, onBack, onSelect }) {
           flexWrap: "wrap"
         }}>
           <div>
-            <h2>Histórico de aulas</h2>
-            <p>Visualização das aulas registradas para o instrutor autenticado.</p>
+            <h2>
+              {selectedStudent?.full_name
+                ? `Histórico de aulas — ${selectedStudent.full_name}`
+                : "Histórico de aulas"}
+            </h2>
+            <p>
+              {selectedStudent?.full_name
+                ? "Visualização das aulas registradas exclusivamente para este aluno."
+                : "Visualização das aulas registradas para o instrutor autenticado."}
+            </p>
           </div>
           <button type="button" onClick={onBack}>VOLTAR</button>
         </div>
@@ -5420,6 +5436,7 @@ if (tab === "aulas" && showLessonHistory) {
   return (
     <LessonHistory
       user={user}
+      selectedStudent={selectedStudent}
       onBack={() => setShowLessonHistory(false)}
       onSelect={(lesson) => setSelectedLesson(lesson)}
     />
