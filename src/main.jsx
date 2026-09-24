@@ -5,7 +5,7 @@ import "./style.css";
 import RPAForm from "./RPAForm";
 import { COURSE_CATALOG } from "./courseContent";
 import { buildModuleAssessment } from "./courseAssessment";
-import { LayoutDashboard, Users, CalendarDays, CarFront, Brain, FileText, WalletCards, BookOpen, BadgeCheck, LogOut, Play } from "lucide-react";
+import { LayoutDashboard, Users, CalendarDays, CarFront, Brain, FileText, WalletCards, BookOpen, BadgeCheck, LogOut, Play, Trash2 } from "lucide-react";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -437,6 +437,15 @@ function StudentList({ user, onNewStudent, onSelectStudent }) {
   const [msg, setMsg] = useState("");
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("TODAS");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteOptions, setDeleteOptions] = useState({
+    lessons: false,
+    rpa: false,
+    finance: false,
+    contracts: false
+  });
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState("");
 
   async function loadStudents() {
     setLoading(true);
@@ -497,6 +506,183 @@ function StudentList({ user, onNewStudent, onSelectStudent }) {
 
     return matchesSearch && matchesCategory;
   });
+
+  function openDelete(student) {
+    setDeleteTarget(student);
+    setDeleteOptions({ lessons: false, rpa: false, finance: false, contracts: false });
+    setDeleteMsg("");
+  }
+
+  function closeDelete() {
+    if (deleteBusy) return;
+    setDeleteTarget(null);
+    setDeleteMsg("");
+  }
+
+  async function deleteStudentData(mode = "selected") {
+    if (!deleteTarget || !supabase) return;
+
+    const studentId = deleteTarget.id;
+    const opts = mode === "all"
+      ? { lessons: true, rpa: true, finance: true, contracts: true }
+      : deleteOptions;
+
+    if (mode === "selected" && !Object.values(opts).some(Boolean)) {
+      setDeleteMsg("Selecione pelo menos um grupo de dados.");
+      return;
+    }
+
+    const confirmed = mode === "all"
+      ? window.confirm(
+          `ATENÇÃO: excluir todo o cadastro de ${deleteTarget.full_name} apagará aulas, avaliações, RPA, financeiro, contratos e o cadastro do aluno. Esses dados não poderão ser recuperados. Deseja continuar?`
+        )
+      : window.confirm(
+          "Os dados selecionados serão excluídos permanentemente e não poderão ser recuperados. Deseja continuar?"
+        );
+
+    if (!confirmed) return;
+
+    setDeleteBusy(true);
+    setDeleteMsg("");
+
+    try {
+      // O RPA pode apontar para a última aula. Removê-lo primeiro evita
+      // conflito de integridade quando o histórico de aulas também for apagado.
+      if (opts.rpa) {
+        const { error } = await supabase
+          .from("ai_rpa_reports")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("student_id", studentId);
+        if (error) throw error;
+      }
+
+      if (opts.lessons) {
+        const { error } = await supabase
+          .from("ai_lessons")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("student_id", studentId);
+        if (error) throw error;
+
+        // Como o histórico inteiro foi removido, zera a contagem de aulas
+        // realizadas no planejamento que permanecer no cadastro.
+        const { error: planError } = await supabase
+          .from("ai_student_category_plans")
+          .update({ completed_lessons: 0 })
+          .eq("user_id", user.id)
+          .eq("student_id", studentId);
+        if (planError) console.warn("Não foi possível zerar o progresso do planejamento:", planError);
+
+        const { data: contractsForPlans } = await supabase
+          .from("ai_service_contracts")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("student_id", studentId);
+
+        const planContractIds = (contractsForPlans || []).map(item => item.id);
+        if (planContractIds.length) {
+          const { data: planItems } = await supabase
+            .from("ai_service_contract_items")
+            .select("id")
+            .eq("user_id", user.id)
+            .in("service_contract_id", planContractIds);
+
+          const planItemIds = (planItems || []).map(item => item.id);
+          if (planItemIds.length) {
+            const { error: itemResetError } = await supabase
+              .from("ai_service_contract_items")
+              .update({ completed_lessons: 0 })
+              .eq("user_id", user.id)
+              .in("id", planItemIds);
+            if (itemResetError) console.warn("Não foi possível zerar o progresso do contrato:", itemResetError);
+          }
+        }
+      }
+
+      if (opts.finance) {
+        const { error } = await supabase
+          .from("ai_finance")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("student_id", studentId);
+        if (error) throw error;
+      }
+
+      if (opts.contracts) {
+        const { data: contracts, error: contractsReadError } = await supabase
+          .from("ai_service_contracts")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("student_id", studentId);
+        if (contractsReadError) throw contractsReadError;
+
+        const contractIds = (contracts || []).map(item => item.id);
+
+        if (contractIds.length) {
+          // Se ainda existirem lançamentos financeiros do contrato, removê-los
+          // antes das parcelas/contratos evita referências órfãs.
+          const { error: financeByContractError } = await supabase
+            .from("ai_finance")
+            .delete()
+            .eq("user_id", user.id)
+            .in("service_contract_id", contractIds);
+          if (financeByContractError) throw financeByContractError;
+
+          const { error: installmentsError } = await supabase
+            .from("ai_contract_installments")
+            .delete()
+            .eq("user_id", user.id)
+            .in("service_contract_id", contractIds);
+          if (installmentsError) throw installmentsError;
+
+          const { error: itemsError } = await supabase
+            .from("ai_service_contract_items")
+            .delete()
+            .eq("user_id", user.id)
+            .in("service_contract_id", contractIds);
+          if (itemsError) throw itemsError;
+
+          const { error: contractsError } = await supabase
+            .from("ai_service_contracts")
+            .delete()
+            .eq("user_id", user.id)
+            .in("id", contractIds);
+          if (contractsError) throw contractsError;
+        }
+
+        const { error: plansError } = await supabase
+          .from("ai_student_category_plans")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("student_id", studentId);
+        if (plansError) throw plansError;
+      }
+
+      if (mode === "all") {
+        const { error } = await supabase
+          .from("ai_students")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("id", studentId);
+        if (error) throw error;
+
+        setStudents(prev => prev.filter(item => item.id !== studentId));
+        setMsg("Cadastro do aluno excluído com sucesso.");
+      } else {
+        setMsg("Dados selecionados excluídos com sucesso.");
+      }
+
+      setDeleteTarget(null);
+      setDeleteMsg("");
+      window.dispatchEvent(new CustomEvent("enat:refresh"));
+    } catch (error) {
+      console.error("Erro ao excluir dados do aluno:", error);
+      setDeleteMsg(error?.message || "Não foi possível concluir a exclusão.");
+    } finally {
+      setDeleteBusy(false);
+    }
+  }
 
   function initials(name) {
     const parts = String(name || "Aluno").trim().split(/\s+/).filter(Boolean);
@@ -753,18 +939,122 @@ function StudentList({ user, onNewStudent, onSelectStudent }) {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => onSelectStudent(student)}
-                  style={{ width: "100%" }}
-                >
-                  USAR ALUNO NAS AULAS
-                </button>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "8px" }}>
+                  <button
+                    type="button"
+                    onClick={() => onSelectStudent(student)}
+                    style={{ width: "100%" }}
+                  >
+                    USAR ALUNO NAS AULAS
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openDelete(student)}
+                    title={`Excluir dados de ${student.full_name}`}
+                    aria-label={`Excluir dados de ${student.full_name}`}
+                    style={{
+                      width: "44px",
+                      minWidth: "44px",
+                      padding: 0,
+                      background: "#fff1f2",
+                      color: "#b42318",
+                      border: "1px solid #f0b8bd"
+                    }}
+                  >
+                    <Trash2 size={17} />
+                  </button>
+                </div>
               </article>
             );
           })}
         </div>
       )}
+    {deleteTarget && (
+      <div
+        role="dialog"
+        aria-modal="true"
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1000,
+          background: "rgba(7, 24, 43, 0.58)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "20px"
+        }}
+      >
+        <div className="panel" style={{ maxWidth: "620px", width: "100%", margin: 0, background: "#fff" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "flex-start" }}>
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 900, letterSpacing: ".06em", color: "#b42318" }}>EXCLUSÃO DE DADOS</div>
+              <h2 style={{ margin: "5px 0 6px" }}>Excluir dados de {deleteTarget.full_name}</h2>
+              <p style={{ margin: 0 }}>Escolha o que deseja apagar. A exclusão é permanente.</p>
+            </div>
+            <button type="button" className="link" onClick={closeDelete} disabled={deleteBusy}>FECHAR</button>
+          </div>
+
+          <div style={{ marginTop: "16px", display: "grid", gap: "8px" }}>
+            {[
+              ["lessons", "Aulas e avaliações", "Remove o histórico das aulas e os dados registrados nelas."],
+              ["rpa", "RPA", "Remove o relatório de acompanhamento do aluno."],
+              ["finance", "Financeiro", "Remove os lançamentos financeiros vinculados ao aluno."],
+              ["contracts", "Contratos e planejamento", "Remove contratos, parcelas, itens e planejamento de categorias."]
+            ].map(([key, title, description]) => (
+              <label key={key} style={{
+                display: "grid",
+                gridTemplateColumns: "22px 1fr",
+                gap: "8px",
+                padding: "11px",
+                border: "1px solid #dfe7f2",
+                borderRadius: "9px",
+                background: "#fafcff",
+                cursor: "pointer"
+              }}>
+                <input
+                  type="checkbox"
+                  checked={deleteOptions[key]}
+                  onChange={e => setDeleteOptions(prev => ({ ...prev, [key]: e.target.checked }))}
+                  disabled={deleteBusy}
+                />
+                <span>
+                  <strong>{title}</strong>
+                  <small style={{ display: "block", marginTop: "2px", opacity: .7 }}>{description}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+
+          {deleteMsg && <p className="msg" style={{ marginTop: "12px" }}>{deleteMsg}</p>}
+
+          <div style={{
+            marginTop: "16px",
+            paddingTop: "14px",
+            borderTop: "1px solid #edf0f3",
+            display: "flex",
+            justifyContent: "space-between",
+            gap: "10px",
+            flexWrap: "wrap"
+          }}>
+            <button
+              type="button"
+              onClick={() => deleteStudentData("all")}
+              disabled={deleteBusy}
+              style={{ background: "#fff1f2", color: "#b42318", border: "1px solid #f0b8bd" }}
+            >
+              {deleteBusy ? "EXCLUINDO..." : "EXCLUIR TODO O CADASTRO"}
+            </button>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button type="button" className="link" onClick={closeDelete} disabled={deleteBusy}>CANCELAR</button>
+              <button type="button" onClick={() => deleteStudentData("selected")} disabled={deleteBusy}>
+                {deleteBusy ? "EXCLUINDO..." : "EXCLUIR SELECIONADOS"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
     </div>
   );
 }
@@ -2249,6 +2539,38 @@ function LessonHistory({ user, onBack, onSelect }) {
     return () => window.removeEventListener("enat:refresh", handleRefresh);
   }, [user.id]);
 
+  async function deleteLesson(lesson) {
+    if (!supabase || !lesson?.id) return;
+
+    const status = String(lesson.status || "").toLowerCase();
+    if (status === "running" || status === "paused") {
+      window.alert("Não é possível excluir uma aula em andamento ou pausada. Finalize ou cancele a aula antes.");
+      return;
+    }
+
+    const student = Array.isArray(lesson.ai_students) ? lesson.ai_students[0] : lesson.ai_students;
+    const confirmed = window.confirm(
+      `ATENÇÃO: excluir a aula de ${student?.full_name || "este aluno"} apagará os dados registrados nessa aula, incluindo avaliação e observações. Esses dados serão perdidos. Deseja continuar?`
+    );
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from("ai_lessons")
+        .delete()
+        .eq("id", lesson.id)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      setLessons(prev => prev.filter(item => item.id !== lesson.id));
+      window.dispatchEvent(new CustomEvent("enat:refresh"));
+    } catch (error) {
+      console.error("Erro ao excluir aula:", error);
+      window.alert(error?.message || "Não foi possível excluir a aula.");
+    }
+  }
+
   function formatDate(value) {
     if (!value) return "Não informado";
     const date = new Date(value);
@@ -2572,13 +2894,31 @@ function LessonHistory({ user, onBack, onSelect }) {
                   {lesson.objective || "Não informado"}
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => onSelect(lesson)}
-                  style={{ width: "100%" }}
-                >
-                  VISUALIZAR AULA
-                </button>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "8px" }}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(lesson)}
+                    style={{ width: "100%" }}
+                  >
+                    VISUALIZAR AULA
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteLesson(lesson)}
+                    title="Excluir aula"
+                    aria-label="Excluir aula"
+                    style={{
+                      width: "44px",
+                      minWidth: "44px",
+                      padding: 0,
+                      background: "#fff1f2",
+                      color: "#b42318",
+                      border: "1px solid #f0b8bd"
+                    }}
+                  >
+                    <Trash2 size={17} />
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -2718,13 +3058,31 @@ function LessonHistory({ user, onBack, onSelect }) {
                     </td>
 
                     <td style={{ padding: "11px 10px", textAlign: "center" }}>
-                      <button
-                        type="button"
-                        onClick={() => onSelect(lesson)}
-                        style={{ whiteSpace: "nowrap" }}
-                      >
-                        VISUALIZAR
-                      </button>
+                      <div style={{ display: "flex", gap: "6px", justifyContent: "center" }}>
+                        <button
+                          type="button"
+                          onClick={() => onSelect(lesson)}
+                          style={{ whiteSpace: "nowrap" }}
+                        >
+                          VISUALIZAR
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteLesson(lesson)}
+                          title="Excluir aula"
+                          aria-label="Excluir aula"
+                          style={{
+                            width: "36px",
+                            minWidth: "36px",
+                            padding: 0,
+                            background: "#fff1f2",
+                            color: "#b42318",
+                            border: "1px solid #f0b8bd"
+                          }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -5502,6 +5860,38 @@ if (tab === "agenda") {
                 String(lesson.objective || "").toLowerCase().includes(termo);
             });
 
+  async function deleteScheduledLesson(lesson) {
+    if (!supabase || !lesson?.id) return;
+
+    const status = String(lesson.status || "").toLowerCase();
+    if (status !== "scheduled") {
+      window.alert("Somente aulas agendadas podem ser excluídas nesta tela. Aulas realizadas ficam no Histórico de Aulas.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Excluir a aula agendada de ${nomeAlunoAgenda(lesson)} em ${dataAgenda(lesson.scheduled_at)}? O agendamento será perdido.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from("ai_lessons")
+        .delete()
+        .eq("id", lesson.id)
+        .eq("user_id", user.id)
+        .eq("status", "scheduled");
+
+      if (error) throw error;
+
+      setAgendaLessons(prev => prev.filter(item => item.id !== lesson.id));
+      window.dispatchEvent(new CustomEvent("enat:refresh"));
+    } catch (error) {
+      console.error("Erro ao excluir aula agendada:", error);
+      window.alert(error?.message || "Não foi possível excluir a aula agendada.");
+    }
+  }
+
   return (
     <div>
       <div
@@ -5692,19 +6082,37 @@ if (tab === "agenda") {
 
                 <div style={{ textAlign: "right" }}>
                   {String(lesson.status || "").toLowerCase() === "scheduled" ? (
-                    <button
-                      type="button"
-                      title="Iniciar aula agendada"
-                      onClick={() => {
-                        setScheduledLessonToStart(lesson);
-                        setShowLessonForm(true);
-                        setTab("aulas");
-                      }}
-                      style={{ margin: 0, whiteSpace: "nowrap" }}
-                    >
-                      <Play size={15} style={{ verticalAlign: "middle", marginRight: "5px" }} />
-                      INICIAR
-                    </button>
+                    <div style={{ display: "flex", gap: "6px", justifyContent: "flex-end", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        title="Iniciar aula agendada"
+                        onClick={() => {
+                          setScheduledLessonToStart(lesson);
+                          setShowLessonForm(true);
+                          setTab("aulas");
+                        }}
+                        style={{ margin: 0, whiteSpace: "nowrap" }}
+                      >
+                        <Play size={15} style={{ verticalAlign: "middle", marginRight: "5px" }} />
+                        INICIAR
+                      </button>
+                      <button
+                        type="button"
+                        title="Excluir aula agendada"
+                        onClick={() => deleteScheduledLesson(lesson)}
+                        style={{
+                          margin: 0,
+                          width: "40px",
+                          minWidth: "40px",
+                          padding: 0,
+                          background: "#fff1f2",
+                          color: "#b42318",
+                          border: "1px solid #f0b8bd"
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   ) : (
                     <span style={{ fontSize: "11px", opacity: 0.6 }}>Sem ação</span>
                   )}
