@@ -2179,15 +2179,12 @@ function LessonRunning({ user, lesson, onCompleted, onBack, readOnly = false }) 
       return;
     }
 
-    // A fase 4 — Avaliação — só libera a Parada Segura depois que
+    // A fase 4 — Avaliação — libera a Parada Segura depois que
     // os dois conjuntos de avaliação foram preenchidos.
+    // A Parada Segura ainda não existe nesta fase: ela é registrada
+    // somente quando a aula chega à fase 5.
     if (currentPhase === 4) {
-      if (!safeStopAt) {
-      setMessage("Registre a Parada Segura antes de concluir a aula.");
-      return;
-    }
-
-    if (!evaluationComplete) {
+      if (!evaluationComplete) {
         setMessage("Preencha os cinco fatores da avaliação andragógica antes de avançar para a Parada Segura.");
         return;
       }
