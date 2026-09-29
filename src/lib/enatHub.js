@@ -80,9 +80,17 @@ function parseHSINote(notes) {
 function normalizeHSIStructuredValue(value) {
   if (!value || typeof value !== "object") return null;
   const scores = value.scores && typeof value.scores === "object" ? value.scores : value;
+  const aliases = {
+    D: ["D", "decision"],
+    O: ["O", "organization"],
+    T: ["T", "time"],
+    H: ["H", "humanization"],
+    P: ["P", "psychocomportamental"]
+  };
   const normalizedScores = {};
   for (const key of ["D", "O", "T", "H", "P"]) {
-    const number = Number(scores[key]);
+    const raw = aliases[key].map((alias) => scores?.[alias]).find((item) => item != null);
+    const number = Number(raw);
     if (!Number.isFinite(number) || number < 1 || number > 5) return null;
     normalizedScores[key] = number;
   }
@@ -196,8 +204,10 @@ function installLessonCompletionBridge() {
 
         try {
           const { data: sessionData } = await supabase.auth.getSession();
-          const uf = sessionData?.session?.user?.user_metadata?.uf || null;
-          await syncCompletedHSILesson(lesson, { uf });
+          const metadata = sessionData?.session?.user?.user_metadata || {};
+          const uf = metadata?.uf || null;
+          const municipalityCode = metadata?.acting_city || null;
+          await syncCompletedHSILesson(lesson, { uf, municipalityCode });
         } catch (syncError) {
           console.warn("Sincronização direta HSI-DOTH-P com a Central pendente:", syncError);
         }
