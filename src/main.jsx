@@ -8377,12 +8377,10 @@ function Root() {
       const storedGuestSession = sessionStorage.getItem(NEURODRIVE_COURSE_SESSION_KEY);
 
       try {
-        if (ticket || storedGuestSession) {
-          const body = ticket
-            ? { action: "redeem", ticket }
-            : { action: "session", session: storedGuestSession };
-
-          const { data, error } = await supabase.functions.invoke("neurodrive-course-access", { body });
+        if (ticket) {
+          const { data, error } = await supabase.functions.invoke("neurodrive-course-access", {
+            body: { action: "redeem", ticket }
+          });
 
           if (!error && data?.access_scope === "courses" && data?.session) {
             sessionStorage.setItem(NEURODRIVE_COURSE_SESSION_KEY, data.session);
@@ -8394,10 +8392,35 @@ function Root() {
             return;
           }
 
-          if (storedGuestSession) sessionStorage.removeItem(NEURODRIVE_COURSE_SESSION_KEY);
-          if (mounted && ticket) {
-            setGuestCoursesError(data?.error || error?.message || "Não foi possível autorizar o acesso aos cursos.");
+          // A URL com ?access= é uma autorização explícita da Rede Neurotrânsito.
+          // Se ela falhar, NUNCA devemos cair na sessão Supabase existente do navegador,
+          // pois isso abriria o Dashboard em vez da aba CURSOS.
+          if (mounted) {
+            setGuestCoursesError(
+              data?.error ||
+              error?.message ||
+              "Não foi possível autorizar o acesso aos cursos."
+            );
+            setLoading(false);
           }
+          return;
+        }
+
+        if (storedGuestSession) {
+          const { data, error } = await supabase.functions.invoke("neurodrive-course-access", {
+            body: { action: "session", session: storedGuestSession }
+          });
+
+          if (!error && data?.access_scope === "courses" && data?.session) {
+            sessionStorage.setItem(NEURODRIVE_COURSE_SESSION_KEY, data.session);
+            if (mounted) {
+              setGuestCoursesSession(data.session);
+              setLoading(false);
+            }
+            return;
+          }
+
+          sessionStorage.removeItem(NEURODRIVE_COURSE_SESSION_KEY);
         }
 
         const { data, error } = await supabase.auth.getSession();
