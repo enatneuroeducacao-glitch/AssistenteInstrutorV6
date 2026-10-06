@@ -8238,12 +8238,119 @@ function SubscriptionPage({ user, subscription, onRefresh, onBack }) {
 const NEURODRIVE_COURSE_SESSION_KEY = "neurodrive_courses_guest_session_v1";
 
 function GuestCoursesAccess({ session, onExit }) {
+  const [restrictedTab, setRestrictedTab] = useState("");
+
   const guestUser = {
     id: "neurodrive-guest-course",
     email: "",
     user_metadata: { full_name: "Instrutor Neurotrânsito" }
   };
-  return <CoursesPage user={guestUser} onBack={onExit} />;
+
+  const menu = [
+    ["dashboard", "DASHBOARD", LayoutDashboard],
+    ["alunos", "ALUNOS", Users],
+    ["agenda", "AGENDA", CalendarDays],
+    ["aulas", "AULAS", CarFront],
+    ["hsi", "HSI-DOTH-P", Brain],
+    ["rpa", "RPA ÚNICO", FileText],
+    ["financeiro", "FINANCEIRO", WalletCards],
+    ["cursos", "CURSOS", BookOpen],
+    ["assinatura", "ASSINATURA ENAT", BadgeCheck]
+  ];
+
+  function requestRegistration(key) {
+    if (key === "cursos") {
+      setRestrictedTab("");
+      return;
+    }
+    setRestrictedTab(key);
+  }
+
+  if (restrictedTab) {
+    const label = menu.find(([key]) => key === restrictedTab)?.[1] || "este recurso";
+    return (
+      <div className="app dashboard-shell">
+        <aside className="main-sidebar">
+          <div className="sidebar-brand">
+            <span>ENAT</span>
+            <small>ASSISTENTE DO INSTRUTOR</small>
+          </div>
+          {menu.map(([key, labelText, Icon]) => (
+            <button
+              key={key}
+              title={labelText}
+              aria-label={labelText}
+              className={key === "cursos" ? "nav active" : "nav"}
+              onClick={() => requestRegistration(key)}
+            >
+              <Icon size={22} strokeWidth={2.1} />
+              <span>{labelText}</span>
+            </button>
+          ))}
+        </aside>
+        <main>
+          <header>
+            <div>
+              <b>Rede Neurotrânsito</b>
+              <small>NeuroDrive ENAT — acesso gratuito à aba CURSOS</small>
+            </div>
+            <span className="pill">CADASTRO NECESSÁRIO</span>
+          </header>
+          <section>
+            <div className="panel" style={{ maxWidth: 820, margin: "40px auto", padding: 32, textAlign: "center" }}>
+              <div style={{ fontSize: 46, marginBottom: 10 }}>🔒</div>
+              <small style={{ fontWeight: 900, letterSpacing: ".08em", color: "#55BFEF" }}>NEURODRIVE ENAT</small>
+              <h1 style={{ margin: "8px 0 12px" }}>Cadastro necessário</h1>
+              <p style={{ color: "#5f6b7a", lineHeight: 1.7, maxWidth: 680, margin: "0 auto 22px" }}>
+                O acesso vindo da Rede Neurotrânsito autoriza somente a aba <strong>CURSOS</strong>.
+                Para acessar <strong>{label}</strong> e os demais recursos profissionais do NeuroDrive,
+                é necessário criar uma conta ou entrar com seu cadastro.
+              </p>
+              <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
+                <button type="button" onClick={onExit}>CRIAR CADASTRO / ENTRAR</button>
+                <button type="button" className="secondary" onClick={() => setRestrictedTab("")}>← VOLTAR AOS CURSOS</button>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    );
+  }
+
+  return (
+    <div className="app dashboard-shell">
+      <aside className="main-sidebar">
+        <div className="sidebar-brand">
+          <span>ENAT</span>
+          <small>ASSISTENTE DO INSTRUTOR</small>
+        </div>
+        {menu.map(([key, label, Icon]) => (
+          <button
+            key={key}
+            title={label}
+            aria-label={label}
+            className={key === "cursos" ? "nav active" : "nav"}
+            onClick={() => requestRegistration(key)}
+          >
+            <Icon size={22} strokeWidth={2.1} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </aside>
+      <main>
+        <header>
+          <div>
+            <b>Rede Neurotrânsito</b>
+            <small>NeuroDrive ENAT — acesso autorizado somente para CURSOS</small>
+          </div>
+          <span className="pill">CURSOS AUTORIZADOS</span>
+        </header>
+        <section>
+          <CoursesPage user={guestUser} onBack={() => {}} />
+        </section>
+      </main>
+    </div>
+  );
 }
 
 function Root() {
