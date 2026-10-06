@@ -8235,26 +8235,104 @@ function SubscriptionPage({ user, subscription, onRefresh, onBack }) {
   );
 }
 
+const NEURODRIVE_COURSE_SESSION_KEY = "neurodrive_courses_guest_session_v1";
+
+function GuestCoursesAccess({ session, onExit }) {
+  const guestUser = {
+    id: "neurodrive-guest-course",
+    email: "",
+    user_metadata: { full_name: "Instrutor Neurotrânsito" }
+  };
+  return <CoursesPage user={guestUser} onBack={onExit} />;
+}
+
 function Root() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [configError, setConfigError] = useState("");
+  const [guestCoursesSession, setGuestCoursesSession] = useState(null);
+  const [guestCoursesError, setGuestCoursesError] = useState("");
 
   useEffect(() => {
     let mounted = true;
-    if (!supabase) { setConfigError("Supabase não configurado. Verifique VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env."); setLoading(false); return; }
-    supabase.auth.getSession().then(({ data, error }) => {
-      if (!mounted) return;
-      if (error) console.error("Erro ao recuperar sessão:", error);
-      setUser(data?.session?.user ?? null); setLoading(false);
-    }).catch(error => { console.error("Erro Supabase:", error); if (mounted) { setUser(null); setLoading(false); } });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => { if (mounted) { setUser(session?.user ?? null); setLoading(false); } });
+
+    async function initialize() {
+      if (!supabase) {
+        if (mounted) {
+          setConfigError("Supabase não configurado. Verifique VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const ticket = params.get("access");
+      const storedGuestSession = sessionStorage.getItem(NEURODRIVE_COURSE_SESSION_KEY);
+
+      try {
+        if (ticket || storedGuestSession) {
+          const body = ticket
+            ? { action: "redeem", ticket }
+            : { action: "session", session: storedGuestSession };
+
+          const { data, error } = await supabase.functions.invoke("neurodrive-course-access", { body });
+
+          if (!error && data?.access_scope === "courses" && data?.session) {
+            sessionStorage.setItem(NEURODRIVE_COURSE_SESSION_KEY, data.session);
+            window.history.replaceState({}, document.title, window.location.pathname);
+            if (mounted) {
+              setGuestCoursesSession(data.session);
+              setLoading(false);
+            }
+            return;
+          }
+
+          if (storedGuestSession) sessionStorage.removeItem(NEURODRIVE_COURSE_SESSION_KEY);
+          if (mounted && ticket) {
+            setGuestCoursesError(data?.error || error?.message || "Não foi possível autorizar o acesso aos cursos.");
+          }
+        }
+
+        const { data, error } = await supabase.auth.getSession();
+        if (!mounted) return;
+        if (error) console.error("Erro ao recuperar sessão:", error);
+        setUser(data?.session?.user ?? null);
+        setLoading(false);
+      } catch (error) {
+        console.error("Erro ao validar acesso NeuroDrive:", error);
+        if (mounted) {
+          setGuestCoursesError(error?.message || "Não foi possível validar o acesso aos cursos.");
+          setLoading(false);
+        }
+      }
+    }
+
+    initialize();
+    const { data: { subscription } } = supabase?.auth?.onAuthStateChange?.((_event, session) => {
+      if (mounted && !guestCoursesSession) {
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    }) || { subscription: null };
+
     return () => { mounted = false; subscription?.unsubscribe(); };
   }, []);
 
-  async function logout() { if (supabase) await supabase.auth.signOut(); setUser(null); }
+  async function logout() {
+    if (supabase) await supabase.auth.signOut();
+    setUser(null);
+  }
+
+  function exitGuestCourses() {
+    sessionStorage.removeItem(NEURODRIVE_COURSE_SESSION_KEY);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    window.location.reload();
+  }
+
   if (loading) return <div className="auth"><div className="card"><h1>ENAT - Assistente do Instrutor</h1><p>Verificando acesso...</p></div></div>;
   if (configError) return <div className="auth"><div className="card"><h1>Configuração necessária</h1><p className="msg">{configError}</p></div></div>;
+  if (guestCoursesSession) return <GuestCoursesAccess session={guestCoursesSession} onExit={exitGuestCourses} />;
+  if (guestCoursesError) return <div className="auth"><div className="card"><h1>Acesso aos Cursos NeuroDrive</h1><p className="msg">{guestCoursesError}</p></div></div>;
   return user ? <Dashboard user={user} onLogout={logout} /> : <Auth onAuth={setUser} />;
 }
 
