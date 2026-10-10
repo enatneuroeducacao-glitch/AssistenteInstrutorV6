@@ -7,6 +7,8 @@ import { COURSE_CATALOG } from "./courseContent";
 import { buildModuleAssessment } from "./courseAssessment";
 import { LayoutDashboard, Users, CalendarDays, CarFront, Brain, FileText, WalletCards, BookOpen, BadgeCheck, LogOut, Play, Trash2 } from "lucide-react";
 
+const NEURODRIVE_COURSE_SESSION_KEY = "neurodrive_courses_guest_session_v1";
+
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
@@ -8235,8 +8237,6 @@ function SubscriptionPage({ user, subscription, onRefresh, onBack }) {
   );
 }
 
-const NEURODRIVE_COURSE_SESSION_KEY = "neurodrive_courses_guest_session_v1";
-
 function GuestCoursesAccess({ session, onExit }) {
   const [restrictedTab, setRestrictedTab] = useState("");
 
@@ -8438,12 +8438,13 @@ function Root() {
     }
 
     initialize();
-    const { data: { subscription } } = supabase?.auth?.onAuthStateChange?.((_event, session) => {
+    const authState = supabase?.auth?.onAuthStateChange?.((_event, session) => {
       if (mounted && !guestCoursesSession) {
         setUser(session?.user ?? null);
         setLoading(false);
       }
-    }) || { subscription: null };
+    });
+    const subscription = authState?.data?.subscription ?? null;
 
     return () => { mounted = false; subscription?.unsubscribe(); };
   }, []);

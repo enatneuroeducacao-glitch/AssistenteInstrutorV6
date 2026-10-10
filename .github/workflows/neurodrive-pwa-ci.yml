@@ -1,0 +1,57 @@
+name: NeuroDrive PWA CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "public/**"
+      - "src/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.js"
+      - ".github/workflows/neurodrive-pwa-ci.yml"
+  push:
+    branches: ["feature/neurodrive-pwa-mobile"]
+    paths:
+      - "index.html"
+      - "public/**"
+      - "src/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - "vite.config.js"
+      - ".github/workflows/neurodrive-pwa-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neurodrive-pwa-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and verify PWA assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Build application
+        run: npm run build
+      - name: Verify PWA assets
+        run: |
+          test -s dist/index.html
+          test -s dist/manifest.webmanifest
+          test -s dist/sw.js
+          test -s dist/offline.html
+          grep -q 'manifest.webmanifest' dist/index.html
+          grep -q 'serviceWorker.register' dist/index.html
