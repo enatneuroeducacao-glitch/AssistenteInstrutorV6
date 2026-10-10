@@ -3,13 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>NEURODRIVE INSTRUTOR ENAT-HSI</title>
+  <meta name="theme-color" content="#12345a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="NeuroDrive" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" type="image/png" href="/enat-logo.png?v=7" />
   <link rel="shortcut icon" type="image/png" href="/enat-logo.png?v=7" />
   <link rel="apple-touch-icon" href="/enat-logo.png?v=7" />
+  <title>NEURODRIVE INSTRUTOR ENAT-HSI</title>
+  <style>
+    #neurodrive-install {
+      position: fixed; z-index: 10000; right: max(16px, env(safe-area-inset-right));
+      bottom: max(16px, env(safe-area-inset-bottom)); display: none; border: 0;
+      border-radius: 999px; padding: 13px 18px; background: #1675d1; color: #fff;
+      font: 800 14px/1.2 system-ui, sans-serif; box-shadow: 0 8px 28px #081c3533;
+      cursor: pointer; touch-action: manipulation;
+    }
+    @media (max-width: 600px) {
+      #neurodrive-install { left: 16px; right: 16px; bottom: max(12px, env(safe-area-inset-bottom)); width: calc(100% - 32px); }
+    }
+  </style>
 </head>
 <body>
   <div id="root"></div>
+  <button id="neurodrive-install" type="button" aria-label="Instalar NeuroDrive no celular">Instalar NeuroDrive</button>
   <script type="module">
     if (window.location.pathname === "/admin-access") {
       import("./src/admin.jsx");
@@ -22,6 +40,37 @@
         }
       });
     }
+  </script>
+  <script>
+    (() => {
+      const button = document.getElementById("neurodrive-install");
+      let installPrompt = null;
+      const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+      if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+        window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch((error) => console.warn("NeuroDrive: registro PWA indisponível", error)));
+      }
+      window.addEventListener("beforeinstallprompt", (event) => {
+        event.preventDefault();
+        installPrompt = event;
+        if (!isStandalone()) button.style.display = "block";
+      });
+      window.addEventListener("appinstalled", () => {
+        installPrompt = null;
+        button.style.display = "none";
+      });
+      button.addEventListener("click", async () => {
+        if (installPrompt) {
+          installPrompt.prompt();
+          await installPrompt.userChoice;
+          installPrompt = null;
+          button.style.display = "none";
+          return;
+        }
+        if (/iphone|ipad|ipod/i.test(navigator.userAgent) && !isStandalone()) {
+          alert('Para instalar o NeuroDrive: toque em Compartilhar no Safari e escolha “Adicionar à Tela de Início”.');
+        }
+      });
+    })();
   </script>
 </body>
 </html>
