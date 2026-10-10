@@ -22,12 +22,9 @@ text = text.replace(
     1,
 )
 
-# Preserve the official subscription gate for professional modules.
-text = text.replace(
-    "const protectedTabs = new Set([]);",
-    'const protectedTabs = new Set(["alunos", "agenda", "aulas", "hsi", "rpa", "financeiro"]);',
-    1,
-)
+# The official preparation script defines the access policy for the core app.
+# Do not patch protectedTabs here: prepare-neurodrive-pages.py intentionally
+# sets the operational core to the same free-access policy as the official site.
 
 # Keep the guest-course session key at module scope before runtime consumers.
 key_decl = 'const NEURODRIVE_COURSE_SESSION_KEY = "neurodrive_courses_guest_session_v1";'
@@ -49,4 +46,9 @@ for script in (
 ):
     subprocess.run([sys.executable, script], check=True)
 
-print("Official NeuroDrive build preparation completed.")
+# Fail safely if the homologation access policy diverges from the official build.
+final_source = SOURCE.read_text(encoding="utf-8")
+if 'const protectedTabs = new Set([]);' not in final_source:
+    raise SystemExit("Build stopped safely: access policy differs from official free-core build.")
+
+print("Official NeuroDrive build preparation and access policy verified.")
