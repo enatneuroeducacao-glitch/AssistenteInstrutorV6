@@ -1,7 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#17345f"/>
-  <circle cx="256" cy="238" r="150" fill="none" stroke="#55bfee" stroke-width="24"/>
-  <path d="M145 330V151h35l112 118V151h35v179h-34L180 210v120z" fill="#ffffff"/>
-  <path d="M335 342l30-30 30 30-30 30z" fill="#55bfee"/>
-  <text x="256" y="430" font-family="Arial,sans-serif" font-size="38" font-weight="700" text-anchor="middle" fill="#ffffff">ENAT</text>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#071a35"/><stop offset="1" stop-color="#123e78"/></linearGradient>
+    <linearGradient id="brain" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#22d3ee"/><stop offset=".5" stop-color="#1687f8"/><stop offset="1" stop-color="#1246a0"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <g fill="url(#brain)" stroke="#f5fbff" stroke-width="8" stroke-linejoin="round">
+    <path d="M251 111c-20-29-62-36-88-13-18-7-43 2-50 26-29 0-48 25-42 52-24 18-23 53-2 72-17 25-8 57 16 72-4 31 20 53 46 50 17 27 51 28 70 8 20 13 40 4 50-10z"/>
+    <path d="M261 111c20-29 62-36 88-13 18-7 43 2 50 26 29 0 48 25 42 52 24 18 23 53 2 72 17 25 8 57-16 72 4 31-20 53-46 50-17 27-51 28-70 8-20 13-40 4-50-10z"/>
+  </g>
+  <g fill="none" stroke="#53f4ff" stroke-width="7" stroke-linecap="round">
+    <path d="M127 188c35 4 49 26 53 54m-66 35c34-14 58-3 75 23m72-144c-9 32-5 52 0 69m-7 80c-25-11-43-9-64 5"/>
+    <path d="M385 188c-35 4-49 26-53 54m66 35c-34-14-58-3-75 23m-72-144c9 32 5 52 0 69m7 80c25-11 43-9 64 5"/>
+  </g>
+  <g fill="#b7fbff" stroke="#fff" stroke-width="3">
+    <circle cx="128" cy="188" r="10"/><circle cx="181" cy="242" r="10"/><circle cx="114" cy="277" r="10"/>
+    <circle cx="384" cy="188" r="10"/><circle cx="331" cy="242" r="10"/><circle cx="398" cy="277" r="10"/>
+  </g>
+  <path d="M210 493c-12-53-9-95 10-134 18-37 43-59 36-94-4-19-15-36-30-53 36 8 75 34 91 66 24 49-4 82-17 117-10 28-10 60 0 98z" fill="#06152d" stroke="#54f5ff" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M256 479c-5-34-1-61 10-87 12-27 23-45 18-66-3-13-9-24-18-35" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round" stroke-dasharray="15 17"/>
 </svg>
