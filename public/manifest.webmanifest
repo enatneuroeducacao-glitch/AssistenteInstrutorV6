@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "NeuroDrive — Instrutor ENAT-HSI",
+  "short_name": "NeuroDrive",
+  "description": "Aplicativo do instrutor ENAT-HSI para uso em dispositivos móveis.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f7fb",
+  "theme_color": "#12345a",
+  "categories": [
+    "education",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/enat-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
