@@ -8438,12 +8438,13 @@ function Root() {
     }
 
     initialize();
-    const { data: { subscription } } = supabase?.auth?.onAuthStateChange?.((_event, session) => {
+    const authState = supabase?.auth?.onAuthStateChange?.((_event, session) => {
       if (mounted && !guestCoursesSession) {
         setUser(session?.user ?? null);
         setLoading(false);
       }
-    }) || { subscription: null };
+    });
+    const subscription = authState?.data?.subscription ?? null;
 
     return () => { mounted = false; subscription?.unsubscribe(); };
   }, []);
