@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/fix-student-form-state.mjs && node scripts/enforce-rpa-hsi.mjs && vite build",
+    "build": "python scripts/prepare-official-build.py && node scripts/fix-student-form-state.mjs && node scripts/enforce-rpa-hsi.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
