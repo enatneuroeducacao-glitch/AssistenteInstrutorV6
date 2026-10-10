@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#17345f"/>
+  <circle cx="256" cy="238" r="150" fill="none" stroke="#55bfee" stroke-width="24"/>
+  <path d="M145 330V151h35l112 118V151h35v179h-34L180 210v120z" fill="#ffffff"/>
+  <path d="M335 342l30-30 30 30-30 30z" fill="#55bfee"/>
+  <text x="256" y="430" font-family="Arial,sans-serif" font-size="38" font-weight="700" text-anchor="middle" fill="#ffffff">ENAT</text>
+</svg>
