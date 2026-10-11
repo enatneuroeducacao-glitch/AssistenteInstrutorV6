@@ -90,6 +90,14 @@
       });
     })();
   </script>
+  <script>
+    if ("serviceWorker" in navigator && location.protocol === "https:") {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js", { scope: "/" })
+          .catch((error) => console.warn("NeuroDrive PWA: falha ao registrar Service Worker", error));
+      });
+    }
+  </script>
   <script type="module">
     if (window.location.pathname === "/admin-access") {
       import("./src/admin.jsx");
