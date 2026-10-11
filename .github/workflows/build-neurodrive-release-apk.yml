@@ -126,14 +126,16 @@ jobs:
           if "    buildTypes {" not in s:
               raise SystemExit("Could not find buildTypes block in android/app/build.gradle")
           s = s.replace("    buildTypes {", signing + "    buildTypes {", 1)
-          needle = "        release {"
-          if needle not in s:
-              raise SystemExit("Could not find release build type")
-          start = s.index(needle)
-          next_brace = s.index("\n        }", start)
-          block = s[start:next_brace]
-          if "signingConfig" not in block:
-              s = s[:next_brace] + "\n            signingConfig signingConfigs.release" + s[next_brace:]
+          build_types_start = s.index("    buildTypes {")
+          release_start = s.find("        release {", build_types_start)
+          if release_start < 0:
+              raise SystemExit("Could not find release build type inside buildTypes")
+          release_end = s.find("\n        }", release_start)
+          if release_end < 0:
+              raise SystemExit("Could not find end of release build type")
+          release_block = s[release_start:release_end]
+          if "signingConfig" not in release_block:
+              s = s[:release_end] + "\n            signingConfig signingConfigs.release" + s[release_end:]
           p.write_text(s, encoding="utf-8")
           PY
           echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
