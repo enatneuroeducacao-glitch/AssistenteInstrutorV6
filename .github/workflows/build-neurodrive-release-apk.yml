@@ -83,7 +83,7 @@ jobs:
         run: npm run build
 
       - name: Install Capacitor tooling
-        run: npm install --no-save --no-package-lock @capacitor/core@7 @capacitor/android@7 @capacitor/cli@7
+        run: npm install --no-save --no-package-lock @capacitor/core@7 @capacitor/android@7 @capacitor/cli@7 sharp
 
       - name: Generate Android project
         run: |
@@ -92,7 +92,6 @@ jobs:
 
       - name: Apply NeuroDrive launcher icon to Android
         run: |
-          npm install --no-save --no-package-lock sharp
           node --input-type=module <<'JS'
           import sharp from 'sharp';
           import { readFile, mkdir, writeFile } from 'node:fs/promises';
