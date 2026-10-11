@@ -1,7 +1,7 @@
 /* NeuroDrive PWA. Authenticated screens and user data are deliberately never cached. */
-const CACHE_NAME = "neurodrive-static-v1";
+const CACHE_NAME = "neurodrive-static-v2";
 const OFFLINE_URL = "/offline.html";
-const STATIC_SUPPORT = [OFFLINE_URL, "/neurodrive-login-brand.svg", "/enat-logo.png"];
+const STATIC_SUPPORT = [OFFLINE_URL, "/neurodrive-login-brand.svg", "/neurodrive-pwa-icon.svg?v=2"];
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_SUPPORT)).then(() => self.skipWaiting()));
 });
