@@ -1,0 +1,88 @@
+name: Build NeuroDrive Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/neurodrive-android-apk
+    paths:
+      - "src/**"
+      - "public/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - "capacitor.config.json"
+      - ".github/workflows/build-neurodrive-apk.yml"
+
+permissions:
+  contents: read
+
+env:
+  VITE_SUPABASE_URL: https://gicjsuagmiyoqvttbqjw.supabase.co
+  VITE_SUPABASE_ANON_KEY: sb_publishable_ovAAaIT0nXzSMiy2KYGHTw_ydsshEzK
+  VITE_BASE_PATH: /
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install web dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Apply same production build patches
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("src/main.jsx")
+          s = p.read_text(encoding="utf-8")
+          s = s.replace('function Auth({ onAuth }) {', 'function Auth({ onAuth, initialMessage = "" }) {', 1)
+          s = s.replace('const [msg, setMsg] = useState("");', 'const [msg, setMsg] = useState(initialMessage);', 1)
+          s = s.replace('options: {\n              data: professionalMetadata\n            }', 'options: {\n              emailRedirectTo: "https://neurodrive.hsi-doth-pg.com.br/?confirmed=1",\n              data: professionalMetadata\n            }', 1)
+          s = s.replace('const protectedTabs = new Set([]);', 'const protectedTabs = new Set(["alunos", "agenda", "aulas", "hsi", "rpa", "financeiro"]);', 1)
+          p.write_text(s, encoding="utf-8")
+          PY
+          python scripts/prepare-neurodrive-pages.py
+          python scripts/normalize-financial-dashboard.py
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Install Capacitor tooling without changing project dependencies
+        run: npm install --no-save --no-package-lock @capacitor/core@7 @capacitor/android@7 @capacitor/cli@7
+
+      - name: Generate Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Build installable debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurodrive-android-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
