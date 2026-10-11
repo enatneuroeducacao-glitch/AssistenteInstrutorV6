@@ -90,6 +90,26 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      - name: Apply NeuroDrive launcher icon to Android
+        run: |
+          npm install --no-save --no-package-lock sharp
+          node --input-type=module <<'JS'
+          import sharp from 'sharp';
+          import { readFile, mkdir, writeFile } from 'node:fs/promises';
+          import { join } from 'node:path';
+          const svg = await readFile('public/neurodrive-pwa-icon.svg');
+          const resources = 'android/app/src/main/res';
+          const densities = { mdpi: 48, hdpi: 72, xhdpi: 96, xxhdpi: 144, xxxhdpi: 192 };
+          for (const [density, size] of Object.entries(densities)) {
+            const dir = join(resources, 'mipmap-' + density);
+            await mkdir(dir, { recursive: true });
+            const png = await sharp(svg).resize(size, size, { fit: 'contain' }).png().toBuffer();
+            await writeFile(join(dir, 'ic_launcher.png'), png);
+            await writeFile(join(dir, 'ic_launcher_round.png'), png);
+          }
+          console.log('NeuroDrive launcher icons generated for all Android densities.');
+          JS
+
       - name: Prepare private signing key
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
