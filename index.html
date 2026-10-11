@@ -57,8 +57,8 @@
         clearTimeout(noteTimer);
         noteTimer = setTimeout(() => note.remove(), 9000);
       };
-      if (isStandalone()) hideButton();
-      else button.hidden = false;
+      // Mantém o botão visível também em modo standalone; o usuário pode precisar consultar as instruções.
+      button.hidden = false;
       // Garante o botão mesmo em navegadores móveis que não disparam beforeinstallprompt.
       button.style.setProperty("display", "flex", "important");
       button.style.setProperty("visibility", "visible", "important");
@@ -70,8 +70,8 @@
       });
       window.addEventListener("appinstalled", () => {
         installPrompt = null;
-        hideButton();
-        showNote("NeuroDrive instalado com sucesso.");
+        button.hidden = false;
+        showNote("NeuroDrive instalado. Se precisar reinstalar ou consultar opções, use o menu do navegador.");
       });
       button.addEventListener("click", async () => {
         if (installPrompt) {
