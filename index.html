@@ -10,11 +10,74 @@
   <meta name="apple-mobile-web-app-title" content="NeuroDrive" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" type="image/png" sizes="192x192" href="/neurodrive-icon-192.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/neurodrive-icon-180.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/neurodrive-icon-180.png">
   <title>NeuroDrive — ENAT | Ensino Neuroeducacional Aplicado ao Trânsito</title>
+  <style>
+    #neurodrive-install-fab{position:fixed;right:max(20px,env(safe-area-inset-right));bottom:max(22px,env(safe-area-inset-bottom));z-index:2147483000;display:flex;align-items:center;gap:9px;padding:13px 18px;border:0;border-radius:999px;background:#1264bd;color:#fff;font:800 14px/1.1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 8px 24px rgba(7,26,53,.3);cursor:pointer;letter-spacing:.1px;transition:transform .15s,box-shadow .15s}
+    #neurodrive-install-fab:hover{transform:translateY(-2px);box-shadow:0 11px 28px rgba(7,26,53,.36)}
+    #neurodrive-install-fab:focus-visible{outline:3px solid #f6b72b;outline-offset:3px}
+    #neurodrive-install-fab svg{width:19px;height:19px;flex:none}
+    #neurodrive-install-note{position:fixed;right:max(20px,env(safe-area-inset-right));bottom:calc(max(22px,env(safe-area-inset-bottom)) + 60px);z-index:2147483000;max-width:min(310px,calc(100vw - 32px));padding:12px 14px;border-radius:12px;background:#071a35;color:#fff;font:500 13px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 6px 20px rgba(7,26,53,.25)}
+    @media(max-width:480px){#neurodrive-install-fab{right:14px;bottom:max(14px,env(safe-area-inset-bottom));padding:12px 15px;font-size:13px}#neurodrive-install-note{right:14px;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 56px)}}
+    @media print{#neurodrive-install-fab,#neurodrive-install-note{display:none!important}}
+  </style>
 </head>
 <body>
   <div id="root"></div>
+  <button id="neurodrive-install-fab" type="button" aria-label="Instalar aplicativo NeuroDrive">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 16v4h14v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>Instalar NeuroDrive</span>
+  </button>
+  <script>
+    (() => {
+      const button = document.getElementById("neurodrive-install-fab");
+      if (!button) return;
+      let installPrompt = null;
+      let noteTimer = null;
+      const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+      const hideButton = () => { button.hidden = true; };
+      const showNote = (message) => {
+        let note = document.getElementById("neurodrive-install-note");
+        if (!note) {
+          note = document.createElement("div");
+          note.id = "neurodrive-install-note";
+          note.setAttribute("role", "status");
+          note.setAttribute("aria-live", "polite");
+          document.body.appendChild(note);
+        }
+        note.textContent = message;
+        clearTimeout(noteTimer);
+        noteTimer = setTimeout(() => note.remove(), 9000);
+      };
+      if (isStandalone()) hideButton();
+      window.addEventListener("beforeinstallprompt", (event) => {
+        event.preventDefault();
+        installPrompt = event;
+        button.hidden = false;
+      });
+      window.addEventListener("appinstalled", () => {
+        installPrompt = null;
+        hideButton();
+        showNote("NeuroDrive instalado com sucesso.");
+      });
+      button.addEventListener("click", async () => {
+        if (installPrompt) {
+          installPrompt.prompt();
+          const choice = await installPrompt.userChoice;
+          installPrompt = null;
+          if (choice && choice.outcome === "accepted") hideButton();
+          else showNote("A instalação não foi concluída. Você pode tentar novamente pelo menu do navegador.");
+          return;
+        }
+        const ua = navigator.userAgent || "";
+        if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
+          showNote('Para instalar no iPhone/iPad: toque em Compartilhar e escolha “Adicionar à Tela de Início”.');
+        } else {
+          showNote('Para instalar: abra o menu ⋮ do navegador e escolha “Instalar NeuroDrive” ou “Instalar aplicativo”. Se essa opção não aparecer, atualize a página e tente novamente.');
+        }
+      });
+    })();
+  </script>
   <script type="module">
     if (window.location.pathname === "/admin-access") {
       import("./src/admin.jsx");
