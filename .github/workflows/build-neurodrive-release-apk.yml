@@ -98,15 +98,27 @@ jobs:
           import { join } from 'node:path';
           const svg = await readFile('public/neurodrive-pwa-icon.svg');
           const resources = 'android/app/src/main/res';
-          const densities = { mdpi: 48, hdpi: 72, xhdpi: 96, xxhdpi: 144, xxxhdpi: 192 };
-          for (const [density, size] of Object.entries(densities)) {
+          const densities = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
+          for (const [density, scale] of Object.entries(densities)) {
             const dir = join(resources, 'mipmap-' + density);
             await mkdir(dir, { recursive: true });
-            const png = await sharp(svg).resize(size, size, { fit: 'contain' }).png().toBuffer();
+            const png = await sharp(svg).resize(Math.round(48 * scale), Math.round(48 * scale), { fit: 'contain' }).png().toBuffer();
             await writeFile(join(dir, 'ic_launcher.png'), png);
             await writeFile(join(dir, 'ic_launcher_round.png'), png);
+            const adaptiveSize = Math.round(108 * scale);
+            const adaptive = await sharp(svg).resize(adaptiveSize, adaptiveSize, { fit: 'contain' }).png().toBuffer();
+            await writeFile(join(dir, 'ic_launcher_foreground.png'), adaptive);
           }
-          console.log('NeuroDrive launcher icons generated for all Android densities.');
+          const anydpi = join(resources, 'mipmap-anydpi-v26');
+          await mkdir(anydpi, { recursive: true });
+          const adaptiveXml = `<?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@android:color/black" />
+              <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+          </adaptive-icon>`;
+          await writeFile(join(anydpi, 'ic_launcher.xml'), adaptiveXml);
+          await writeFile(join(anydpi, 'ic_launcher_round.xml'), adaptiveXml);
+          console.log('NeuroDrive legacy and adaptive launcher icons generated for all Android densities.');
           JS
 
       - name: Prepare private signing key
