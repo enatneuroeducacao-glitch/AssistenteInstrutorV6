@@ -9,7 +9,7 @@ on:
       - ".github/workflows/build-neurodrive-release-apk.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   VITE_SUPABASE_URL: https://gicjsuagmiyoqvttbqjw.supabase.co
@@ -149,6 +149,15 @@ jobs:
           APK="android/app/build/outputs/apk/release/app-release.apk"
           test -s "$APK"
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
+
+      - name: Publish public GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          gh release create neurodrive-v1.0.0 "$APK" \\
+            --title "NeuroDrive Android v1.0.0" \\
+            --notes "Versão Android assinada do NeuroDrive ENAT. Baixe app-release.apk e instale em dispositivo Android. O Android poderá solicitar autorização para instalar aplicativos desta origem."
 
       - name: Upload signed release APK
         uses: actions/upload-artifact@v4
