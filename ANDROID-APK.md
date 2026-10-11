@@ -6,7 +6,7 @@ Este fluxo adiciona uma embalagem Android com Capacitor sem substituir a PWA nem
 
 1. Abra **Actions** no GitHub.
 2. Execute **Build NeuroDrive Android APK** na branch `feat/neurodrive-android-apk`.
-3. Aguarde o job `build-apk terminar.
+3. Aguarde o job `build-apk` terminar.
 4. Baixe o artefato `neurodrive-android-debug-apk` e extraia `app-debug.apk`.
 
 O workflow compila o mesmo projeto React/Vite e preserva o backend Supabase existente. Não cria banco de dados separado. O APK de debug serve para homologação e instalação direta em Android; não é ainda uma versão assinada para publicação na Google Play.
