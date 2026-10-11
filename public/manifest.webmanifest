@@ -1,0 +1,22 @@
+{
+  "id": "/",
+  "name": "NeuroDrive — Assistente do Instrutor ENAT-HSI",
+  "short_name": "NeuroDrive",
+  "description": "ENAT — Ensino Neuroeducacional Aplicado ao Trânsito. Ferramentas pedagógicas e de segurança viária para instrutores.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#071a35",
+  "theme_color": "#123e78",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "/neurodrive-pwa-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
