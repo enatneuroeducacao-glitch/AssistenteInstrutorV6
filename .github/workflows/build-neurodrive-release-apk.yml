@@ -2,6 +2,11 @@ name: Build NeuroDrive Android Release APK
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feat/neurodrive-android-apk
+    paths:
+      - ".github/workflows/build-neurodrive-release-apk.yml"
 
 permissions:
   contents: read
