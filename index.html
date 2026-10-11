@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/neurodrive-icon-180.png">
   <title>NeuroDrive — ENAT | Ensino Neuroeducacional Aplicado ao Trânsito</title>
   <style>
-    #neurodrive-install-fab{position:fixed!important;right:max(20px,env(safe-area-inset-right))!important;bottom:max(22px,env(safe-area-inset-bottom))!important;z-index:2147483647!important;display:flex!important;visibility:visible!important;opacity:1!important;align-items:center;gap:9px;padding:13px 18px;border:0;border-radius:999px;background:#1264bd;color:#fff;font:800 14px/1.1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 8px 24px rgba(7,26,53,.3);cursor:pointer;letter-spacing:.1px;transition:transform .15s,box-shadow .15s}
+    #neurodrive-install-fab{position:fixed!important;right:max(20px,env(safe-area-inset-right))!important;bottom:max(88px,calc(env(safe-area-inset-bottom) + 76px))!important;z-index:2147483647!important;display:flex!important;visibility:visible!important;opacity:1!important;align-items:center;gap:9px;padding:13px 18px;border:0;border-radius:999px;background:#1264bd;color:#fff;font:800 14px/1.1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-shadow:0 8px 24px rgba(7,26,53,.3);cursor:pointer;letter-spacing:.1px;transition:transform .15s,box-shadow .15s}
     #neurodrive-install-fab[hidden]{display:none!important}
     #neurodrive-install-fab:hover{transform:translateY(-2px);box-shadow:0 11px 28px rgba(7,26,53,.36)}
     #neurodrive-install-fab:focus-visible{outline:3px solid #f6b72b;outline-offset:3px}
@@ -111,6 +111,35 @@
         }
       });
     }
+  </script>
+
+  <script>
+    // Recupera o botão se uma renderização mobile ou navegação interna o remover.
+    (function(){
+      function ensureNeuroDriveInstallButton(){
+        var b=document.getElementById('neurodrive-install-fab');
+        if(!b){
+          b=document.createElement('button');
+          b.id='neurodrive-install-fab'; b.type='button';
+          b.innerHTML='<span aria-hidden="true">⬇</span><span>Instalar NeuroDrive</span>';
+          b.setAttribute('aria-label','Instalar aplicativo NeuroDrive');
+          b.style.cssText='position:fixed!important;right:14px!important;bottom:max(88px,calc(env(safe-area-inset-bottom) + 76px))!important;z-index:2147483647!important;display:flex!important;visibility:visible!important;opacity:1!important;padding:14px 18px;border:0;border-radius:999px;background:#1264bd;color:#fff;font:800 14px/1.2 system-ui,sans-serif;box-shadow:0 8px 24px rgba(7,26,53,.3)';
+          b.addEventListener('click',function(){
+            var ua=navigator.userAgent||'';
+            alert(/iPad|iPhone|iPod/.test(ua)?'Para instalar no iPhone/iPad: abra no Safari, toque em Compartilhar e escolha “Adicionar à Tela de Início”.':'Para instalar, use o menu ⋮ do navegador e escolha “Instalar aplicativo” ou “Adicionar à tela inicial”.');
+          });
+          document.body.appendChild(b);
+        }
+        b.hidden=false;
+        b.style.setProperty('display','flex','important');
+        b.style.setProperty('visibility','visible','important');
+        b.style.setProperty('opacity','1','important');
+      }
+      window.addEventListener('pageshow',ensureNeuroDriveInstallButton);
+      document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')ensureNeuroDriveInstallButton()});
+      if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureNeuroDriveInstallButton);else ensureNeuroDriveInstallButton();
+      new MutationObserver(ensureNeuroDriveInstallButton).observe(document.documentElement,{childList:true,subtree:true});
+    })();
   </script>
 </body>
 </html>
