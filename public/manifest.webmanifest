@@ -8,17 +8,17 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f4f7fb",
-  "theme_color": "#12345a",
+  "background_color": "#071a35",
+  "theme_color": "#123e78",
   "categories": [
     "education",
     "productivity"
   ],
   "icons": [
     {
-      "src": "/enat-logo.png",
+      "src": "/neurodrive-pwa-icon.svg?v=2",
       "sizes": "any",
-      "type": "image/png",
+      "type": "image/svg+xml",
       "purpose": "any"
     }
   ]
