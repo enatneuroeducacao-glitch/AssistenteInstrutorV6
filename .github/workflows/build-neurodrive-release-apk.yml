@@ -1,0 +1,161 @@
+name: Build NeuroDrive Android Release APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/neurodrive-android-apk
+    paths:
+      - ".github/workflows/build-neurodrive-release-apk.yml"
+
+permissions:
+  contents: read
+
+env:
+  VITE_SUPABASE_URL: https://gicjsuagmiyoqvttbqjw.supabase.co
+  VITE_SUPABASE_ANON_KEY: sb_publishable_ovAAaIT0nXzSMiy2KYGHTw_ydsshEzK
+  VITE_BASE_PATH: /
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require Android signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_BASE64" || (echo "::error::Missing repository secret ANDROID_KEYSTORE_BASE64" && exit 1)
+          test -n "$KEYSTORE_PASSWORD" || (echo "::error::Missing repository secret ANDROID_KEYSTORE_PASSWORD" && exit 1)
+          test -n "$KEY_ALIAS" || (echo "::error::Missing repository secret ANDROID_KEY_ALIAS" && exit 1)
+          test -n "$KEY_PASSWORD" || (echo "::error::Missing repository secret ANDROID_KEY_PASSWORD" && exit 1)
+
+      - name: Checkout NeuroDrive homologation branch
+        uses: actions/checkout@v4
+        with:
+          ref: feat/neurodrive-android-apk
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Configure Android SDK
+        run: |
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> "$GITHUB_ENV"
+          echo "/usr/local/lib/android/sdk/platform-tools" >> "$GITHUB_PATH"
+          echo "/usr/local/lib/android/sdk/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+
+      - name: Install Android SDK packages
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses || true
+          "$SDKMANAGER" "platform-tools"
+          "$SDKMANAGER" "platforms;android-35"
+          "$SDKMANAGER" "build-tools;35.0.0"
+
+      - name: Install web dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Apply homologation build patches
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("src/main.jsx")
+          s = p.read_text(encoding="utf-8")
+          s = s.replace('function Auth({ onAuth }) {', 'function Auth({ onAuth, initialMessage = "" }) {', 1)
+          s = s.replace('const [msg, setMsg] = useState("");', 'const [msg, setMsg] = useState(initialMessage);', 1)
+          s = s.replace('options: {\n              data: professionalMetadata\n            }', 'options: {\n              emailRedirectTo: "https://neurodrive.hsi-doth-pg.com.br/?confirmed=1",\n              data: professionalMetadata\n            }', 1)
+          s = s.replace('const protectedTabs = new Set([]);', 'const protectedTabs = new Set(["alunos", "agenda", "aulas", "hsi", "rpa", "financeiro"]);', 1)
+          p.write_text(s, encoding="utf-8")
+          PY
+          python scripts/prepare-neurodrive-pages.py
+          python scripts/normalize-financial-dashboard.py
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Install Capacitor tooling
+        run: npm install --no-save --no-package-lock @capacitor/core@7 @capacitor/android@7 @capacitor/cli@7
+
+      - name: Generate Android project
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Prepare private signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/neurodrive-release.keystore"
+          chmod 600 "$RUNNER_TEMP/neurodrive-release.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/neurodrive-release.keystore" >> "$GITHUB_ENV"
+
+      - name: Configure Gradle release signing
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/build.gradle")
+          s = p.read_text(encoding="utf-8")
+          if "signingConfigs {" in s:
+              raise SystemExit("Signing configuration already exists; inspect build.gradle before continuing.")
+          signing = '''
+              signingConfigs {
+                  release {
+                      storeFile file(System.getenv("ANDROID_KEYSTORE_PATH"))
+                      storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                      keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                      keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+                  }
+              }
+
+          '''
+          if "    buildTypes {" not in s:
+              raise SystemExit("Could not find buildTypes block in android/app/build.gradle")
+          s = s.replace("    buildTypes {", signing + "    buildTypes {", 1)
+          needle = "        release {"
+          if needle not in s:
+              raise SystemExit("Could not find release build type")
+          start = s.index(needle)
+          next_brace = s.index("\n        }", start)
+          block = s[start:next_brace]
+          if "signingConfig" not in block:
+              s = s[:next_brace] + "\n            signingConfig signingConfigs.release" + s[next_brace:]
+          p.write_text(s, encoding="utf-8")
+          PY
+          echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease
+
+      - name: Verify APK signature
+        run: |
+          APK="android/app/build/outputs/apk/release/app-release.apk"
+          test -s "$APK"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK"
+
+      - name: Upload signed release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: neurodrive-android-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
